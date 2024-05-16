@@ -1,4 +1,4 @@
-use crate::machine::cpu::{Cpu, Flags};
+use crate::machine::cpu::*;
 
 pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
     match opcode {
@@ -6,18 +6,18 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x01 => ld_bc_immediate(cpu),
         0x02 => ld_addr_bc_from_a(cpu),
         0x03 => inc_bc(cpu),
-        0x04 => inc_half_register(&mut cpu.regs.bc, Side::Hi, &mut cpu.regs.flags),
-        0x05 => dec_half_register(&mut cpu.regs.bc, Side::Hi, &mut cpu.regs.flags),
-        0x06 => ld_b_immediate(cpu),
-        0x07 => rotate_a(&mut cpu.regs.a, Direction::Left, &mut cpu.regs.flags),
+        0x04 => inc_register8(cpu, Register8::B),
+        0x05 => dec_register8(cpu, Register8::B),
+        0x06 => ld_register8_immediate(cpu, Register8::B),
+        0x07 => rotate_a(cpu, Direction::Left),
         0x08 => ld_from_stack_pointer_immediate(cpu),
         0x09 => add_hl_bc(cpu),
         0x0A => ld_a_from_bc_indirect(cpu),
         0x0B => dec_bc(cpu),
-        0x0C => inc_half_register(&mut cpu.regs.bc, Side::Lo, &mut cpu.regs.flags),
-        0x0D => dec_half_register(&mut cpu.regs.bc, Side::Lo, &mut cpu.regs.flags),
-        0x0E => todo!(),
-        0x0F => rotate_a(&mut cpu.regs.a, Direction::Right, &mut cpu.regs.flags),
+        0x0C => inc_register8(cpu, Register8::C),
+        0x0D => dec_register8(cpu, Register8::C),
+        0x0E => ld_register8_immediate(cpu, Register8::C),
+        0x0F => rotate_a(cpu, Direction::Right),
         _ => unreachable!(),
     }
 }
@@ -29,23 +29,24 @@ fn nop(_cpu: &mut Cpu) -> u8 {
 fn ld_bc_immediate(cpu: &mut Cpu) -> u8 {
     let lsb = cpu.increment_prog_counter();
     let msb = cpu.increment_prog_counter();
-    cpu.regs.bc = u16::from_le_bytes([lsb, msb]);
+    cpu.regs
+        .set_combined(Register16::BC, u16::from_le_bytes([lsb, msb]));
     12
 }
 
 fn ld_addr_bc_from_a(cpu: &mut Cpu) -> u8 {
-    *cpu.memory.at_mut(cpu.regs.bc) = cpu.regs.a;
+    *cpu.memory.at_mut(cpu.regs.combined(Register16::BC)) = cpu.regs.a;
     8
 }
 
 fn inc_bc(cpu: &mut Cpu) -> u8 {
-    cpu.regs.bc += 1;
+    cpu.regs
+        .set_combined(Register16::BC, cpu.regs.combined(Register16::BC) + 1);
     8
 }
 
-fn ld_b_immediate(cpu: &mut Cpu) -> u8 {
-    let byte = cpu.increment_prog_counter();
-    cpu.regs.bc = set_lo(cpu.regs.bc, byte);
+fn ld_register8_immediate(cpu: &mut Cpu, reg: Register8) -> u8 {
+    cpu.regs[reg] = cpu.increment_prog_counter();
     8
 }
 
@@ -54,17 +55,16 @@ enum Direction {
     Right,
 }
 
-fn rotate_a(a: &mut u8, dir: Direction, flags: &mut Flags) -> u8 {
+fn rotate_a(cpu: &mut Cpu, dir: Direction) -> u8 {
     let result = match dir {
-        Direction::Left => (*a as u16).rotate_left(1),
-        Direction::Right => (*a as u16).rotate_right(1),
+        Direction::Left => (cpu.regs.a as u16).rotate_left(1),
+        Direction::Right => (cpu.regs.a as u16).rotate_right(1),
     };
-
-    *a = result as u8;
-    flags.zero = false;
-    flags.neg = false;
-    flags.half_carry = false;
-    flags.carry = result >> 8 != 0;
+    cpu.regs.a = result as u8;
+    cpu.regs.flags.zero = false;
+    cpu.regs.flags.neg = false;
+    cpu.regs.flags.half_carry = false;
+    cpu.regs.flags.carry = result >> 8 != 0;
     4
 }
 
@@ -78,7 +78,9 @@ fn ld_from_stack_pointer_immediate(cpu: &mut Cpu) -> u8 {
 }
 
 fn add_hl_bc(cpu: &mut Cpu) -> u8 {
-    let result = cpu.regs.hl as u32 + cpu.regs.bc as u32;
+    let result =
+        cpu.regs.combined(Register16::HL) as u32 + cpu.regs.combined(Register16::BC) as u32;
+    cpu.regs.set_combined(Register16::HL, result as u16);
     cpu.regs.flags.zero = false;
     cpu.regs.flags.half_carry = result >> 8 != 0;
     cpu.regs.flags.carry = result >> 16 != 0;
@@ -86,12 +88,13 @@ fn add_hl_bc(cpu: &mut Cpu) -> u8 {
 }
 
 fn ld_a_from_bc_indirect(cpu: &mut Cpu) -> u8 {
-    cpu.regs.a = cpu.memory.at(cpu.regs.bc);
+    cpu.regs.a = cpu.memory.at(cpu.regs.combined(Register16::BC));
     8
 }
 
 fn dec_bc(cpu: &mut Cpu) -> u8 {
-    cpu.regs.bc -= 1;
+    cpu.regs
+        .set_combined(Register16::BC, cpu.regs.combined(Register16::BC) - 1);
     8
 }
 
@@ -100,39 +103,21 @@ enum Side {
     Hi,
 }
 
-fn inc_half_register(reg: &mut u16, side: Side, flags: &mut Flags) -> u8 {
-    let result;
-    match side {
-        Side::Lo => {
-            result = (*reg & 0x00FF) + 1;
-            *reg = set_lo(*reg, result as u8);
-        }
-        Side::Hi => {
-            result = ((*reg & 0xFF00) >> 8) + 1;
-            *reg = set_hi(*reg, result as u8);
-        }
-    };
-    flags.zero = result as u8 == 0;
-    flags.neg = false;
-    flags.half_carry = result >> 8 != 0;
+fn inc_register8(cpu: &mut Cpu, reg: Register8) -> u8 {
+    let (result, carry) = cpu.regs[reg].overflowing_add(1);
+    cpu.regs[reg] = result;
+    cpu.regs.flags.zero = result == 0;
+    cpu.regs.flags.neg = false;
+    cpu.regs.flags.half_carry = carry;
     4
 }
 
-fn dec_half_register(reg: &mut u16, side: Side, flags: &mut Flags) -> u8 {
-    let result;
-    match side {
-        Side::Lo => {
-            result = (*reg & 0x00FF) - 1;
-            *reg = set_lo(*reg, result as u8);
-        }
-        Side::Hi => {
-            result = ((*reg & 0xFF00) >> 8) - 1;
-            *reg = set_hi(*reg, result as u8);
-        }
-    };
-    flags.zero = result as u8 == 0;
-    flags.neg = true;
-    flags.half_carry = result >> 8 != 0;
+fn dec_register8(cpu: &mut Cpu, reg: Register8) -> u8 {
+    let (result, carry) = cpu.regs[reg].overflowing_add_signed(-1);
+    cpu.regs[reg] = result;
+    cpu.regs.flags.zero = result == 0;
+    cpu.regs.flags.neg = true;
+    cpu.regs.flags.half_carry = carry;
     4
 }
 
