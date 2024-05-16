@@ -9,13 +9,15 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x04 => inc_half_register(&mut cpu.regs.bc, Side::Hi, &mut cpu.regs.flags),
         0x05 => dec_half_register(&mut cpu.regs.bc, Side::Hi, &mut cpu.regs.flags),
         0x06 => ld_b_immediate(cpu),
-        0x07 => rlca(cpu),
+        0x07 => rotate_a(&mut cpu.regs.a, Direction::Left, &mut cpu.regs.flags),
         0x08 => ld_from_stack_pointer_immediate(cpu),
         0x09 => add_hl_bc(cpu),
         0x0A => ld_a_from_bc_indirect(cpu),
         0x0B => dec_bc(cpu),
         0x0C => inc_half_register(&mut cpu.regs.bc, Side::Lo, &mut cpu.regs.flags),
         0x0D => dec_half_register(&mut cpu.regs.bc, Side::Lo, &mut cpu.regs.flags),
+        0x0E => todo!(),
+        0x0F => rotate_a(&mut cpu.regs.a, Direction::Right, &mut cpu.regs.flags),
         _ => unreachable!(),
     }
 }
@@ -47,14 +49,22 @@ fn ld_b_immediate(cpu: &mut Cpu) -> u8 {
     8
 }
 
-fn rlca(cpu: &mut Cpu) -> u8 {
-    let result = (cpu.regs.a as u16).rotate_left(1);
+enum Direction {
+    Left,
+    Right,
+}
 
-    cpu.regs.a = result as u8;
-    cpu.regs.flags.zero = false;
-    cpu.regs.flags.neg = false;
-    cpu.regs.flags.half_carry = false;
-    cpu.regs.flags.carry = result >> 8 != 0;
+fn rotate_a(a: &mut u8, dir: Direction, flags: &mut Flags) -> u8 {
+    let result = match dir {
+        Direction::Left => (*a as u16).rotate_left(1),
+        Direction::Right => (*a as u16).rotate_right(1),
+    };
+
+    *a = result as u8;
+    flags.zero = false;
+    flags.neg = false;
+    flags.half_carry = false;
+    flags.carry = result >> 8 != 0;
     4
 }
 
@@ -83,6 +93,11 @@ fn ld_a_from_bc_indirect(cpu: &mut Cpu) -> u8 {
 fn dec_bc(cpu: &mut Cpu) -> u8 {
     cpu.regs.bc -= 1;
     8
+}
+
+enum Side {
+    Lo,
+    Hi,
 }
 
 fn inc_half_register(reg: &mut u16, side: Side, flags: &mut Flags) -> u8 {
@@ -119,11 +134,6 @@ fn dec_half_register(reg: &mut u16, side: Side, flags: &mut Flags) -> u8 {
     flags.neg = true;
     flags.half_carry = result >> 8 != 0;
     4
-}
-
-enum Side {
-    Lo,
-    Hi,
 }
 
 const fn lo(n: u16) -> u8 {
