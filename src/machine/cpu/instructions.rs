@@ -6,15 +6,16 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x01 => ld_bc_immediate(cpu),
         0x02 => ld_addr_bc_from_a(cpu),
         0x03 => inc_bc(cpu),
-        0x04 => inc_half_register(&mut cpu.regs.bc, &mut cpu.regs.flags, Side::Hi),
-        0x05 => dec_b(cpu),
+        0x04 => inc_half_register(&mut cpu.regs.bc, Side::Hi, &mut cpu.regs.flags),
+        0x05 => dec_half_register(&mut cpu.regs.bc, Side::Hi, &mut cpu.regs.flags),
         0x06 => ld_b_immediate(cpu),
         0x07 => rlca(cpu),
         0x08 => ld_from_stack_pointer_immediate(cpu),
         0x09 => add_hl_bc(cpu),
         0x0A => ld_a_from_bc_indirect(cpu),
         0x0B => dec_bc(cpu),
-        0x0C => inc_half_register(&mut cpu.regs.bc, &mut cpu.regs.flags, Side::Lo),
+        0x0C => inc_half_register(&mut cpu.regs.bc, Side::Lo, &mut cpu.regs.flags),
+        0x0D => dec_half_register(&mut cpu.regs.bc, Side::Lo, &mut cpu.regs.flags),
         _ => unreachable!(),
     }
 }
@@ -38,16 +39,6 @@ fn ld_addr_bc_from_a(cpu: &mut Cpu) -> u8 {
 fn inc_bc(cpu: &mut Cpu) -> u8 {
     cpu.regs.bc += 1;
     8
-}
-
-fn dec_b(cpu: &mut Cpu) -> u8 {
-    let result = ((cpu.regs.bc & 0xFF00) >> 8) - 1;
-
-    cpu.regs.bc = set_hi(cpu.regs.bc, result as u8);
-    cpu.regs.flags.zero = result as u8 == 0;
-    cpu.regs.flags.neg = true;
-    cpu.regs.flags.half_carry = result >> 8 != 0;
-    4
 }
 
 fn ld_b_immediate(cpu: &mut Cpu) -> u8 {
@@ -94,7 +85,7 @@ fn dec_bc(cpu: &mut Cpu) -> u8 {
     8
 }
 
-fn inc_half_register(reg: &mut u16, flags: &mut Flags, side: Side) -> u8 {
+fn inc_half_register(reg: &mut u16, side: Side, flags: &mut Flags) -> u8 {
     let result;
     match side {
         Side::Lo => {
@@ -108,6 +99,24 @@ fn inc_half_register(reg: &mut u16, flags: &mut Flags, side: Side) -> u8 {
     };
     flags.zero = result as u8 == 0;
     flags.neg = false;
+    flags.half_carry = result >> 8 != 0;
+    4
+}
+
+fn dec_half_register(reg: &mut u16, side: Side, flags: &mut Flags) -> u8 {
+    let result;
+    match side {
+        Side::Lo => {
+            result = (*reg & 0x00FF) - 1;
+            *reg = set_lo(*reg, result as u8);
+        }
+        Side::Hi => {
+            result = ((*reg & 0xFF00) >> 8) - 1;
+            *reg = set_hi(*reg, result as u8);
+        }
+    };
+    flags.zero = result as u8 == 0;
+    flags.neg = true;
     flags.half_carry = result >> 8 != 0;
     4
 }
