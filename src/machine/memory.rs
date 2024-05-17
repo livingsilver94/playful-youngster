@@ -7,7 +7,7 @@ impl Memory {
         *self.ram.get(addr as usize).unwrap()
     }
 
-    pub fn at_mut(&mut self, addr:u16) -> &mut u8 {
+    pub fn at_mut(&mut self, addr: u16) -> &mut u8 {
         self.ram.get_mut(addr as usize).unwrap()
     }
 }

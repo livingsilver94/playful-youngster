@@ -74,6 +74,7 @@ enum Register16 {
     BC,
     DE,
     HL,
+    SP,
 }
 
 impl ops::Index<Register8> for Registers {
@@ -112,6 +113,9 @@ impl Registers {
             Register16::BC => [self.b, self.c],
             Register16::DE => [self.d, self.e],
             Register16::HL => [self.h, self.l],
+            Register16::SP => {
+                return self.stack_pointer;
+            }
         })
     }
 
@@ -121,6 +125,10 @@ impl Registers {
             Register16::BC => (&mut self.b, &mut self.c),
             Register16::DE => (&mut self.d, &mut self.e),
             Register16::HL => (&mut self.h, &mut self.l),
+            Register16::SP => {
+                self.stack_pointer = val;
+                return;
+            }
         };
         *reg_high = bytes[0];
         *reg_low = bytes[1];
