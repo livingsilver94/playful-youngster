@@ -9,7 +9,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x04 => inc_register8(cpu, Register8::B),
         0x05 => dec_register8(cpu, Register8::B),
         0x06 => ld_register8_immediate(cpu, Register8::B),
-        0x07 => rotate_a(cpu, Direction::Left),
+        0x07 => rotate_circular_a(cpu, Direction::Left),
         0x08 => ld_from_stack_pointer_immediate(cpu),
         0x09 => add_hl_bc(cpu),
         0x0A => ld_a_from_bc_indirect(cpu),
@@ -17,7 +17,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x0C => inc_register8(cpu, Register8::C),
         0x0D => dec_register8(cpu, Register8::C),
         0x0E => ld_register8_immediate(cpu, Register8::C),
-        0x0F => rotate_a(cpu, Direction::Right),
+        0x0F => rotate_circular_a(cpu, Direction::Right),
         0x10 => stop(cpu),
         0x11 => ld_register16_immediate(cpu, Register16::DE),
         0x12 => ld_from_a_to_addr(cpu, Register16::DE),
@@ -25,6 +25,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x14 => inc_register8(cpu, Register8::D),
         0x15 => dec_register8(cpu, Register8::D),
         0x16 => ld_register8_immediate(cpu, Register8::D),
+        0x17 => rotate_a(cpu, Direction::Left),
         _ => unreachable!(),
     }
 }
@@ -36,8 +37,7 @@ fn nop(_cpu: &mut Cpu) -> u8 {
 fn ld_register16_immediate(cpu: &mut Cpu, reg: Register16) -> u8 {
     let lsb = cpu.increment_prog_counter();
     let msb = cpu.increment_prog_counter();
-    cpu.regs
-        .set_combined(reg, u16::from_le_bytes([lsb, msb]));
+    cpu.regs.set_combined(reg, u16::from_le_bytes([lsb, msb]));
     12
 }
 
@@ -47,8 +47,7 @@ fn ld_from_a_to_addr(cpu: &mut Cpu, reg: Register16) -> u8 {
 }
 
 fn inc_register16(cpu: &mut Cpu, reg: Register16) -> u8 {
-    cpu.regs
-        .set_combined(reg, cpu.regs.combined(reg) + 1);
+    cpu.regs.set_combined(reg, cpu.regs.combined(reg) + 1);
     8
 }
 
@@ -62,7 +61,7 @@ enum Direction {
     Right,
 }
 
-fn rotate_a(cpu: &mut Cpu, dir: Direction) -> u8 {
+fn rotate_circular_a(cpu: &mut Cpu, dir: Direction) -> u8 {
     let result = match dir {
         Direction::Left => (cpu.regs.a as u16).rotate_left(1),
         Direction::Right => (cpu.regs.a as u16).rotate_right(1),
@@ -131,6 +130,19 @@ fn dec_register8(cpu: &mut Cpu, reg: Register8) -> u8 {
 fn stop(cpu: &mut Cpu) -> u8 {
     cpu.interrupt_enabled = false;
     cpu.increment_prog_counter();
+    4
+}
+
+fn rotate_a(cpu: &mut Cpu, dir: Direction) -> u8 {
+    let (result, carry) = match dir {
+        Direction::Left => cpu.regs.a.overflowing_shl(1),
+        Direction::Right => cpu.regs.a.overflowing_shr(1),
+    };
+    cpu.regs.a = result;
+    cpu.regs.flags.zero = false;
+    cpu.regs.flags.neg = false;
+    cpu.regs.flags.half_carry = false;
+    cpu.regs.flags.carry = carry;
     4
 }
 
