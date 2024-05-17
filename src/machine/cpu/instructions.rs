@@ -4,8 +4,8 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
     match opcode {
         0x00 => nop(cpu),
         0x01 => ld_register16_immediate(cpu, Register16::BC),
-        0x02 => ld_addr_bc_from_a(cpu),
-        0x03 => inc_bc(cpu),
+        0x02 => ld_from_a_to_addr(cpu, Register16::BC),
+        0x03 => inc_register16(cpu, Register16::BC),
         0x04 => inc_register8(cpu, Register8::B),
         0x05 => dec_register8(cpu, Register8::B),
         0x06 => ld_register8_immediate(cpu, Register8::B),
@@ -20,6 +20,11 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x0F => rotate_a(cpu, Direction::Right),
         0x10 => stop(cpu),
         0x11 => ld_register16_immediate(cpu, Register16::DE),
+        0x12 => ld_from_a_to_addr(cpu, Register16::DE),
+        0x13 => inc_register16(cpu, Register16::DE),
+        0x14 => inc_register8(cpu, Register8::D),
+        0x15 => dec_register8(cpu, Register8::D),
+        0x16 => ld_register8_immediate(cpu, Register8::D),
         _ => unreachable!(),
     }
 }
@@ -36,14 +41,14 @@ fn ld_register16_immediate(cpu: &mut Cpu, reg: Register16) -> u8 {
     12
 }
 
-fn ld_addr_bc_from_a(cpu: &mut Cpu) -> u8 {
-    *cpu.memory.at_mut(cpu.regs.combined(Register16::BC)) = cpu.regs.a;
+fn ld_from_a_to_addr(cpu: &mut Cpu, reg: Register16) -> u8 {
+    *cpu.memory.at_mut(cpu.regs.combined(reg)) = cpu.regs.a;
     8
 }
 
-fn inc_bc(cpu: &mut Cpu) -> u8 {
+fn inc_register16(cpu: &mut Cpu, reg: Register16) -> u8 {
     cpu.regs
-        .set_combined(Register16::BC, cpu.regs.combined(Register16::BC) + 1);
+        .set_combined(reg, cpu.regs.combined(reg) + 1);
     8
 }
 
