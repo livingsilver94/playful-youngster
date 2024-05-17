@@ -7,6 +7,8 @@ use crate::machine::memory;
 pub struct Cpu<'a> {
     regs: Registers,
     memory: &'a mut memory::Memory,
+
+    interrupt_enabled: bool,
 }
 
 impl<'a> Cpu<'a> {

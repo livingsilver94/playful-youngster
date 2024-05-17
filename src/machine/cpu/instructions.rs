@@ -3,7 +3,7 @@ use crate::machine::cpu::*;
 pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
     match opcode {
         0x00 => nop(cpu),
-        0x01 => ld_bc_immediate(cpu),
+        0x01 => ld_register16_immediate(cpu, Register16::BC),
         0x02 => ld_addr_bc_from_a(cpu),
         0x03 => inc_bc(cpu),
         0x04 => inc_register8(cpu, Register8::B),
@@ -18,6 +18,8 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x0D => dec_register8(cpu, Register8::C),
         0x0E => ld_register8_immediate(cpu, Register8::C),
         0x0F => rotate_a(cpu, Direction::Right),
+        0x10 => stop(cpu),
+        0x11 => ld_register16_immediate(cpu, Register16::DE),
         _ => unreachable!(),
     }
 }
@@ -26,11 +28,11 @@ fn nop(_cpu: &mut Cpu) -> u8 {
     4
 }
 
-fn ld_bc_immediate(cpu: &mut Cpu) -> u8 {
+fn ld_register16_immediate(cpu: &mut Cpu, reg: Register16) -> u8 {
     let lsb = cpu.increment_prog_counter();
     let msb = cpu.increment_prog_counter();
     cpu.regs
-        .set_combined(Register16::BC, u16::from_le_bytes([lsb, msb]));
+        .set_combined(reg, u16::from_le_bytes([lsb, msb]));
     12
 }
 
@@ -118,6 +120,12 @@ fn dec_register8(cpu: &mut Cpu, reg: Register8) -> u8 {
     cpu.regs.flags.zero = result == 0;
     cpu.regs.flags.neg = true;
     cpu.regs.flags.half_carry = carry;
+    4
+}
+
+fn stop(cpu: &mut Cpu) -> u8 {
+    cpu.interrupt_enabled = false;
+    cpu.increment_prog_counter();
     4
 }
 
