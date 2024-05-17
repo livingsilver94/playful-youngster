@@ -37,6 +37,12 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x1F => rotate_a(cpu, Direction::Right),
         0x20 => jump_relative(cpu, !cpu.regs.flags.zero),
         0x21 => ld_register16_immediate(cpu, HL),
+        0x22 => ld_to_addr_from_a_increment(cpu, 1),
+        0x23 => inc_register16(cpu, HL),
+        0x24 => inc_register8(cpu, H),
+        0x25 => dec_register8(cpu, H),
+        0x26 => ld_register8_immediate(cpu, H),
+        0x27 => daa(cpu),
         _ => unreachable!(),
     }
 }
@@ -165,6 +171,31 @@ fn jump_relative(cpu: &mut Cpu, condition: bool) -> u8 {
     let offset = cpu.increment_prog_counter() as i16;
     cpu.regs.prog_counter = ((cpu.regs.prog_counter as i16) + offset) as u16;
     12
+}
+
+fn ld_to_addr_from_a_increment(cpu: &mut Cpu, inc: i16) -> u8 {
+    ld_to_addr_from_a(cpu, Register16::HL);
+    cpu.regs.set_combined(
+        Register16::HL,
+        ((cpu.regs.combined(Register16::HL) as i16) + inc) as u16,
+    );
+    8
+}
+
+fn daa(cpu: &mut Cpu) -> u8 {
+    let a = &mut cpu.regs.a;
+    if (*a & 0b00001111) > 9 || cpu.regs.flags.carry {
+        *a += 0x06;
+    }
+    if (*a >> 4) > 9 || cpu.regs.flags.half_carry {
+        *a += 0x60;
+        cpu.regs.flags.carry = true;
+    } else {
+        cpu.regs.flags.carry = false;
+    }
+    cpu.regs.flags.zero = *a == 0;
+    cpu.regs.flags.half_carry = false;
+    4
 }
 
 const fn lo(n: u16) -> u8 {
