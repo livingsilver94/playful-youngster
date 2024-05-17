@@ -1,31 +1,42 @@
 use crate::machine::cpu::*;
 
 pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
+    use {Register16::*, Register8::*};
     match opcode {
         0x00 => nop(cpu),
-        0x01 => ld_register16_immediate(cpu, Register16::BC),
-        0x02 => ld_from_a_to_addr(cpu, Register16::BC),
-        0x03 => inc_register16(cpu, Register16::BC),
-        0x04 => inc_register8(cpu, Register8::B),
-        0x05 => dec_register8(cpu, Register8::B),
-        0x06 => ld_register8_immediate(cpu, Register8::B),
+        0x01 => ld_register16_immediate(cpu, BC),
+        0x02 => ld_to_addr_from_a(cpu, BC),
+        0x03 => inc_register16(cpu, BC),
+        0x04 => inc_register8(cpu, B),
+        0x05 => dec_register8(cpu, B),
+        0x06 => ld_register8_immediate(cpu, B),
         0x07 => rotate_circular_a(cpu, Direction::Left),
         0x08 => ld_from_stack_pointer_immediate(cpu),
-        0x09 => add_hl_bc(cpu),
-        0x0A => ld_a_from_bc_indirect(cpu),
-        0x0B => dec_bc(cpu),
-        0x0C => inc_register8(cpu, Register8::C),
-        0x0D => dec_register8(cpu, Register8::C),
-        0x0E => ld_register8_immediate(cpu, Register8::C),
+        0x09 => add_register16(cpu, HL, BC),
+        0x0A => ld_to_a_from_addr(cpu, BC),
+        0x0B => dec_register16(cpu, BC),
+        0x0C => inc_register8(cpu, C),
+        0x0D => dec_register8(cpu, C),
+        0x0E => ld_register8_immediate(cpu, C),
         0x0F => rotate_circular_a(cpu, Direction::Right),
         0x10 => stop(cpu),
-        0x11 => ld_register16_immediate(cpu, Register16::DE),
-        0x12 => ld_from_a_to_addr(cpu, Register16::DE),
-        0x13 => inc_register16(cpu, Register16::DE),
-        0x14 => inc_register8(cpu, Register8::D),
-        0x15 => dec_register8(cpu, Register8::D),
-        0x16 => ld_register8_immediate(cpu, Register8::D),
+        0x11 => ld_register16_immediate(cpu, DE),
+        0x12 => ld_to_addr_from_a(cpu, DE),
+        0x13 => inc_register16(cpu, DE),
+        0x14 => inc_register8(cpu, D),
+        0x15 => dec_register8(cpu, D),
+        0x16 => ld_register8_immediate(cpu, D),
         0x17 => rotate_a(cpu, Direction::Left),
+        0x18 => jump_relative(cpu, true),
+        0x19 => add_register16(cpu, HL, DE),
+        0x1A => ld_to_a_from_addr(cpu, DE),
+        0x1B => dec_register16(cpu, DE),
+        0x1C => inc_register8(cpu, E),
+        0x1D => dec_register8(cpu, E),
+        0x1E => ld_register8_immediate(cpu, E),
+        0x1F => rotate_a(cpu, Direction::Right),
+        0x20 => jump_relative(cpu, !cpu.regs.flags.zero),
+        0x21 => ld_register16_immediate(cpu, HL),
         _ => unreachable!(),
     }
 }
@@ -41,7 +52,7 @@ fn ld_register16_immediate(cpu: &mut Cpu, reg: Register16) -> u8 {
     12
 }
 
-fn ld_from_a_to_addr(cpu: &mut Cpu, reg: Register16) -> u8 {
+fn ld_to_addr_from_a(cpu: &mut Cpu, reg: Register16) -> u8 {
     *cpu.memory.at_mut(cpu.regs.combined(reg)) = cpu.regs.a;
     8
 }
@@ -83,24 +94,25 @@ fn ld_from_stack_pointer_immediate(cpu: &mut Cpu) -> u8 {
     20
 }
 
-fn add_hl_bc(cpu: &mut Cpu) -> u8 {
-    let result =
-        cpu.regs.combined(Register16::HL) as u32 + cpu.regs.combined(Register16::BC) as u32;
-    cpu.regs.set_combined(Register16::HL, result as u16);
+fn add_register16(cpu: &mut Cpu, reg1: Register16, reg2: Register16) -> u8 {
+    let (result, carry) = cpu
+        .regs
+        .combined(reg1)
+        .overflowing_add(cpu.regs.combined(reg2));
+    cpu.regs.set_combined(reg1, result);
     cpu.regs.flags.zero = false;
     cpu.regs.flags.half_carry = result >> 8 != 0;
-    cpu.regs.flags.carry = result >> 16 != 0;
+    cpu.regs.flags.carry = carry;
     8
 }
 
-fn ld_a_from_bc_indirect(cpu: &mut Cpu) -> u8 {
-    cpu.regs.a = cpu.memory.at(cpu.regs.combined(Register16::BC));
+fn ld_to_a_from_addr(cpu: &mut Cpu, reg: Register16) -> u8 {
+    cpu.regs.a = cpu.memory.at(cpu.regs.combined(reg));
     8
 }
 
-fn dec_bc(cpu: &mut Cpu) -> u8 {
-    cpu.regs
-        .set_combined(Register16::BC, cpu.regs.combined(Register16::BC) - 1);
+fn dec_register16(cpu: &mut Cpu, reg: Register16) -> u8 {
+    cpu.regs.set_combined(reg, cpu.regs.combined(reg) - 1);
     8
 }
 
@@ -144,6 +156,15 @@ fn rotate_a(cpu: &mut Cpu, dir: Direction) -> u8 {
     cpu.regs.flags.half_carry = false;
     cpu.regs.flags.carry = carry;
     4
+}
+
+fn jump_relative(cpu: &mut Cpu, condition: bool) -> u8 {
+    if !condition {
+        return 8;
+    }
+    let offset = cpu.increment_prog_counter() as i16;
+    cpu.regs.prog_counter = ((cpu.regs.prog_counter as i16) + offset) as u16;
+    12
 }
 
 const fn lo(n: u16) -> u8 {
