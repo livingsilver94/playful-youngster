@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use crate::machine::cpu::*;
 
 pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
@@ -43,6 +45,14 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x25 => dec_register8(cpu, H),
         0x26 => ld_register8_immediate(cpu, H),
         0x27 => daa(cpu),
+        0x28 => jump_relative(cpu, cpu.regs.flags.zero),
+        0x29 => add_register16(cpu, HL, HL),
+        0x2A => ld_to_a_from_addr_increment(cpu, 1),
+        0x2B => dec_register16(cpu, HL),
+        0x2C => inc_register8(cpu, L),
+        0x2D => dec_register8(cpu, L),
+        0x2E => ld_register8_immediate(cpu, L),
+        0x2F => cpl(cpu),
         _ => unreachable!(),
     }
 }
@@ -195,6 +205,22 @@ fn daa(cpu: &mut Cpu) -> u8 {
     }
     cpu.regs.flags.zero = *a == 0;
     cpu.regs.flags.half_carry = false;
+    4
+}
+
+fn ld_to_a_from_addr_increment(cpu: &mut Cpu, inc: i16) -> u8 {
+    ld_to_a_from_addr(cpu, Register16::HL);
+    cpu.regs.set_combined(
+        Register16::HL,
+        ((cpu.regs.combined(Register16::HL) as i16) + inc) as u16,
+    );
+    8
+}
+
+fn cpl(cpu: &mut Cpu) -> u8 {
+    cpu.regs.a = cpu.regs.a.not();
+    cpu.regs.flags.neg = true;
+    cpu.regs.flags.half_carry = true;
     4
 }
 
