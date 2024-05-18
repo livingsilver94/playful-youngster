@@ -1,11 +1,11 @@
 use crate::machine::cpu::*;
 
 pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
-    use {Register16::*, Register8::*};
+    use {Register16::*, Register8::*, Sign::*};
     match opcode {
         0x00 => nop(cpu),
         0x01 => ld_register16_immediate(cpu, BC),
-        0x02 => ld_to_addr_from_a(cpu, BC),
+        0x02 => ld_to_addr_from_register8(cpu, BC, A),
         0x03 => inc_register16(cpu, BC, 1),
         0x04 => inc_register8(cpu, B, 1),
         0x05 => inc_register8(cpu, B, -1),
@@ -21,7 +21,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x0F => rotate_circular_a(cpu, Direction::Right),
         0x10 => stop(cpu),
         0x11 => ld_register16_immediate(cpu, DE),
-        0x12 => ld_to_addr_from_a(cpu, DE),
+        0x12 => ld_to_addr_from_register8(cpu, DE, A),
         0x13 => inc_register16(cpu, DE, 1),
         0x14 => inc_register8(cpu, D, 1),
         0x15 => inc_register8(cpu, D, -1),
@@ -115,6 +115,28 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x6D => ld_register8(cpu, L, L),
         0x6E => ld_to_register8_from_addr(cpu, L, HL),
         0x6F => ld_register8(cpu, L, A),
+        0x70 => ld_to_addr_from_register8(cpu, HL, B),
+        0x71 => ld_to_addr_from_register8(cpu, HL, C),
+        0x72 => ld_to_addr_from_register8(cpu, HL, D),
+        0x73 => ld_to_addr_from_register8(cpu, HL, E),
+        0x74 => ld_to_addr_from_register8(cpu, HL, H),
+        0x75 => ld_to_addr_from_register8(cpu, HL, L),
+        0x76 => halt(cpu),
+        0x77 => ld_to_addr_from_register8(cpu, HL, A),
+        0x78 => ld_register8(cpu, A, B),
+        0x79 => ld_register8(cpu, A, C),
+        0x7A => ld_register8(cpu, A, D),
+        0x7B => ld_register8(cpu, A, E),
+        0x7C => ld_register8(cpu, A, H),
+        0x7D => ld_register8(cpu, A, L),
+        0x7E => ld_to_register8_from_addr(cpu, A, HL),
+        0x7F => ld_register8(cpu, A, A),
+        0x80 => add_register8(cpu, B, Positive),
+        0x81 => add_register8(cpu, C, Positive),
+        0x82 => add_register8(cpu, D, Positive),
+        0x83 => add_register8(cpu, E, Positive),
+        0x84 => add_register8(cpu, H, Positive),
+        0x85 => add_register8(cpu, L, Positive),
         _ => unreachable!(),
     }
 }
@@ -130,8 +152,8 @@ fn ld_register16_immediate(cpu: &mut Cpu, reg: Register16) -> u8 {
     12
 }
 
-fn ld_to_addr_from_a(cpu: &mut Cpu, reg: Register16) -> u8 {
-    *cpu.memory.at_mut(cpu.regs.combined(reg)) = cpu.regs.a;
+fn ld_to_addr_from_register8(cpu: &mut Cpu, reg_addr: Register16, src: Register8) -> u8 {
+    *cpu.memory.at_mut(cpu.regs.combined(reg_addr)) = cpu.regs[src];
     8
 }
 
@@ -190,11 +212,6 @@ fn ld_to_register8_from_addr(cpu: &mut Cpu, dst: Register8, reg_addr: Register16
     8
 }
 
-enum Side {
-    Lo,
-    Hi,
-}
-
 fn inc_register8(cpu: &mut Cpu, reg: Register8, val: i8) -> u8 {
     let (result, carry) = cpu.regs[reg].overflowing_add_signed(val);
     cpu.regs[reg] = result;
@@ -205,7 +222,7 @@ fn inc_register8(cpu: &mut Cpu, reg: Register8, val: i8) -> u8 {
 }
 
 fn stop(cpu: &mut Cpu) -> u8 {
-    cpu.interrupt_enabled = false;
+    cpu.halted = false;
     cpu.increment_prog_counter();
     4
 }
@@ -233,7 +250,7 @@ fn jump_relative(cpu: &mut Cpu, condition: bool) -> u8 {
 }
 
 fn ld_to_addr_from_a_increment(cpu: &mut Cpu, inc: i16) -> u8 {
-    ld_to_addr_from_a(cpu, Register16::HL);
+    ld_to_addr_from_register8(cpu, Register16::HL, Register8::A);
     cpu.regs.set_combined(
         Register16::HL,
         ((cpu.regs.combined(Register16::HL) as i16) + inc) as u16,
@@ -305,6 +322,27 @@ fn ccf(cpu: &mut Cpu) -> u8 {
 
 fn ld_register8(cpu: &mut Cpu, dst: Register8, src: Register8) -> u8 {
     cpu.regs[dst] = cpu.regs[src];
+    4
+}
+
+fn halt(cpu: &mut Cpu) -> u8 {
+    cpu.halted = true;
+    4
+}
+
+#[derive(Clone, Copy)]
+enum Sign {
+    Positive = 1,
+    Negative = -1,
+}
+
+fn add_register8(cpu: &mut Cpu, operand: Register8, sign: Sign) -> u8 {
+    let (result, carry) =
+        cpu.regs[Register8::A].overflowing_add_signed(cpu.regs[operand] as i8 * sign as i8);
+    cpu.regs.flags.zero = result == 0;
+    cpu.regs.flags.neg = (sign as i8) < 0;
+    cpu.regs.flags.half_carry = result >> 4 != 0;
+    cpu.regs.flags.carry = carry;
     4
 }
 
