@@ -13,7 +13,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x07 => rotate_circular_a(cpu, Direction::Left),
         0x08 => ld_from_stack_pointer_immediate(cpu),
         0x09 => add_register16(cpu, HL, BC),
-        0x0A => ld_to_a_from_addr(cpu, BC),
+        0x0A => ld_to_register8_from_addr(cpu, A, BC),
         0x0B => inc_register16(cpu, BC, -1),
         0x0C => inc_register8(cpu, C, 1),
         0x0D => inc_register8(cpu, C, -1),
@@ -29,7 +29,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x17 => rotate_a(cpu, Direction::Left),
         0x18 => jump_relative(cpu, true),
         0x19 => add_register16(cpu, HL, DE),
-        0x1A => ld_to_a_from_addr(cpu, DE),
+        0x1A => ld_to_register8_from_addr(cpu, A, DE),
         0x1B => inc_register16(cpu, DE, -1),
         0x1C => inc_register8(cpu, E, 1),
         0x1D => inc_register8(cpu, E, -1),
@@ -62,6 +62,59 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x38 => jump_relative(cpu, cpu.regs.flags.carry),
         0x39 => add_register16(cpu, HL, SP),
         0x3A => ld_to_a_from_addr_increment(cpu, -1),
+        0x3B => inc_register16(cpu, SP, -1),
+        0x3C => inc_register8(cpu, A, 1),
+        0x3D => inc_register8(cpu, A, -1),
+        0x3E => ld_register8_immediate(cpu, A),
+        0x3F => ccf(cpu),
+        0x40 => ld_register8(cpu, B, B),
+        0x41 => ld_register8(cpu, B, C),
+        0x42 => ld_register8(cpu, B, D),
+        0x43 => ld_register8(cpu, B, E),
+        0x44 => ld_register8(cpu, B, H),
+        0x45 => ld_register8(cpu, B, L),
+        0x46 => ld_to_register8_from_addr(cpu, B, HL),
+        0x47 => ld_register8(cpu, B, A),
+        0x48 => ld_register8(cpu, C, B),
+        0x49 => ld_register8(cpu, C, C),
+        0x4A => ld_register8(cpu, C, D),
+        0x4B => ld_register8(cpu, C, E),
+        0x4C => ld_register8(cpu, C, H),
+        0x4D => ld_register8(cpu, C, L),
+        0x4E => ld_to_register8_from_addr(cpu, C, HL),
+        0x4F => ld_register8(cpu, C, A),
+        0x50 => ld_register8(cpu, D, B),
+        0x51 => ld_register8(cpu, D, C),
+        0x52 => ld_register8(cpu, D, D),
+        0x53 => ld_register8(cpu, D, E),
+        0x54 => ld_register8(cpu, D, H),
+        0x55 => ld_register8(cpu, D, L),
+        0x56 => ld_to_register8_from_addr(cpu, D, HL),
+        0x57 => ld_register8(cpu, D, A),
+        0x58 => ld_register8(cpu, E, B),
+        0x59 => ld_register8(cpu, E, C),
+        0x5A => ld_register8(cpu, E, D),
+        0x5B => ld_register8(cpu, E, E),
+        0x5C => ld_register8(cpu, E, H),
+        0x5D => ld_register8(cpu, E, L),
+        0x5E => ld_to_register8_from_addr(cpu, E, HL),
+        0x5F => ld_register8(cpu, E, A),
+        0x60 => ld_register8(cpu, H, B),
+        0x61 => ld_register8(cpu, H, C),
+        0x62 => ld_register8(cpu, H, D),
+        0x63 => ld_register8(cpu, H, E),
+        0x64 => ld_register8(cpu, H, H),
+        0x65 => ld_register8(cpu, H, L),
+        0x66 => ld_to_register8_from_addr(cpu, H, HL),
+        0x67 => ld_register8(cpu, H, A),
+        0x68 => ld_register8(cpu, L, B),
+        0x69 => ld_register8(cpu, L, C),
+        0x6A => ld_register8(cpu, L, D),
+        0x6B => ld_register8(cpu, L, E),
+        0x6C => ld_register8(cpu, L, H),
+        0x6D => ld_register8(cpu, L, L),
+        0x6E => ld_to_register8_from_addr(cpu, L, HL),
+        0x6F => ld_register8(cpu, L, A),
         _ => unreachable!(),
     }
 }
@@ -132,8 +185,8 @@ fn add_register16(cpu: &mut Cpu, reg1: Register16, reg2: Register16) -> u8 {
     8
 }
 
-fn ld_to_a_from_addr(cpu: &mut Cpu, reg: Register16) -> u8 {
-    cpu.regs.a = cpu.memory.at(cpu.regs.combined(reg));
+fn ld_to_register8_from_addr(cpu: &mut Cpu, dst: Register8, reg_addr: Register16) -> u8 {
+    cpu.regs[dst] = cpu.memory.at(cpu.regs.combined(reg_addr));
     8
 }
 
@@ -205,7 +258,7 @@ fn daa(cpu: &mut Cpu) -> u8 {
 }
 
 fn ld_to_a_from_addr_increment(cpu: &mut Cpu, inc: i16) -> u8 {
-    ld_to_a_from_addr(cpu, Register16::HL);
+    ld_to_register8_from_addr(cpu, Register8::A, Register16::HL);
     cpu.regs.set_combined(
         Register16::HL,
         ((cpu.regs.combined(Register16::HL) as i16) + inc) as u16,
@@ -240,6 +293,18 @@ fn scf(cpu: &mut Cpu) -> u8 {
     cpu.regs.flags.neg = false;
     cpu.regs.flags.half_carry = false;
     cpu.regs.flags.carry = true;
+    4
+}
+
+fn ccf(cpu: &mut Cpu) -> u8 {
+    cpu.regs.flags.neg = false;
+    cpu.regs.flags.half_carry = false;
+    cpu.regs.flags.carry = !cpu.regs.flags.carry;
+    4
+}
+
+fn ld_register8(cpu: &mut Cpu, dst: Register8, src: Register8) -> u8 {
+    cpu.regs[dst] = cpu.regs[src];
     4
 }
 
