@@ -147,6 +147,38 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x8D => add_register8(cpu, L, Positive, true),
         0x8E => add_register8_from_addr(cpu, HL, Positive, true),
         0x8F => add_register8(cpu, A, Positive, true),
+        0x90 => add_register8(cpu, B, Negative, false),
+        0x91 => add_register8(cpu, C, Negative, false),
+        0x92 => add_register8(cpu, D, Negative, false),
+        0x93 => add_register8(cpu, E, Negative, false),
+        0x94 => add_register8(cpu, H, Negative, false),
+        0x95 => add_register8(cpu, L, Negative, false),
+        0x96 => add_register8_from_addr(cpu, HL, Negative, false),
+        0x97 => add_register8(cpu, A, Negative, false),
+        0x98 => add_register8(cpu, B, Negative, true),
+        0x99 => add_register8(cpu, C, Negative, true),
+        0x9A => add_register8(cpu, D, Negative, true),
+        0x9B => add_register8(cpu, E, Negative, true),
+        0x9C => add_register8(cpu, H, Negative, true),
+        0x9D => add_register8(cpu, L, Negative, true),
+        0x9E => add_register8_from_addr(cpu, HL, Negative, true),
+        0x9F => add_register8(cpu, A, Negative, true),
+        0xA0 => and_register8(cpu, B),
+        0xA1 => and_register8(cpu, C),
+        0xA2 => and_register8(cpu, D),
+        0xA3 => and_register8(cpu, E),
+        0xA4 => and_register8(cpu, H),
+        0xA5 => and_register8(cpu, L),
+        0xA6 => and_register8_from_addr(cpu, HL),
+        0xA7 => and_register8(cpu, A),
+        0xA8 => xor_register8(cpu, B),
+        0xA9 => xor_register8(cpu, C),
+        0xAA => xor_register8(cpu, D),
+        0xAB => xor_register8(cpu, E),
+        0xAC => xor_register8(cpu, H),
+        0xAD => xor_register8(cpu, L),
+        0xAE => xor_register8_from_addr(cpu, HL),
+        0xAF => xor_register8(cpu, A),
         _ => unreachable!(),
     }
 }
@@ -374,6 +406,44 @@ fn add_register8_from_addr(cpu: &mut Cpu, reg_addr: Register16, sign: Sign, use_
     cpu.regs.flags.neg = (sign as i8) < 0;
     cpu.regs.flags.half_carry = result >> 4 != 0;
     cpu.regs.flags.carry = carry;
+    8
+}
+
+fn and_register8(cpu: &mut Cpu, operand: Register8) -> u8 {
+    cpu.regs[Register8::A] &= cpu.regs[operand];
+    cpu.regs.flags.zero = cpu.regs[Register8::A] == 0;
+    cpu.regs.flags.neg = false;
+    cpu.regs.flags.half_carry = true;
+    cpu.regs.flags.carry = false;
+    4
+}
+
+fn and_register8_from_addr(cpu: &mut Cpu, reg_addr: Register16) -> u8 {
+    let val = cpu.memory.at(cpu.regs.combined(reg_addr));
+    cpu.regs[Register8::A] &= val;
+    cpu.regs.flags.zero = cpu.regs[Register8::A] == 0;
+    cpu.regs.flags.neg = false;
+    cpu.regs.flags.half_carry = true;
+    cpu.regs.flags.carry = false;
+    8
+}
+
+fn xor_register8(cpu: &mut Cpu, operand: Register8) -> u8 {
+    cpu.regs[Register8::A] ^= cpu.regs[operand];
+    cpu.regs.flags.zero = cpu.regs[Register8::A] == 0;
+    cpu.regs.flags.neg = false;
+    cpu.regs.flags.half_carry = false;
+    cpu.regs.flags.carry = false;
+    4
+}
+
+fn xor_register8_from_addr(cpu: &mut Cpu, reg_addr: Register16) -> u8 {
+    let val = cpu.memory.at(cpu.regs.combined(reg_addr));
+    cpu.regs[Register8::A] ^= val;
+    cpu.regs.flags.zero = cpu.regs[Register8::A] == 0;
+    cpu.regs.flags.neg = false;
+    cpu.regs.flags.half_carry = false;
+    cpu.regs.flags.carry = false;
     8
 }
 
