@@ -131,12 +131,22 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x7D => ld_register8(cpu, A, L),
         0x7E => ld_to_register8_from_addr(cpu, A, HL),
         0x7F => ld_register8(cpu, A, A),
-        0x80 => add_register8(cpu, B, Positive),
-        0x81 => add_register8(cpu, C, Positive),
-        0x82 => add_register8(cpu, D, Positive),
-        0x83 => add_register8(cpu, E, Positive),
-        0x84 => add_register8(cpu, H, Positive),
-        0x85 => add_register8(cpu, L, Positive),
+        0x80 => add_register8(cpu, B, Positive, false),
+        0x81 => add_register8(cpu, C, Positive, false),
+        0x82 => add_register8(cpu, D, Positive, false),
+        0x83 => add_register8(cpu, E, Positive, false),
+        0x84 => add_register8(cpu, H, Positive, false),
+        0x85 => add_register8(cpu, L, Positive, false),
+        0x86 => add_register8_from_addr(cpu, HL, Positive, false),
+        0x87 => add_register8(cpu, A, Positive, false),
+        0x88 => add_register8(cpu, B, Positive, true),
+        0x89 => add_register8(cpu, C, Positive, true),
+        0x8A => add_register8(cpu, D, Positive, true),
+        0x8B => add_register8(cpu, E, Positive, true),
+        0x8C => add_register8(cpu, H, Positive, true),
+        0x8D => add_register8(cpu, L, Positive, true),
+        0x8E => add_register8_from_addr(cpu, HL, Positive, true),
+        0x8F => add_register8(cpu, A, Positive, true),
         _ => unreachable!(),
     }
 }
@@ -336,14 +346,35 @@ enum Sign {
     Negative = -1,
 }
 
-fn add_register8(cpu: &mut Cpu, operand: Register8, sign: Sign) -> u8 {
-    let (result, carry) =
-        cpu.regs[Register8::A].overflowing_add_signed(cpu.regs[operand] as i8 * sign as i8);
+fn add_register8(cpu: &mut Cpu, operand: Register8, sign: Sign, use_carry: bool) -> u8 {
+    let carry = if use_carry {
+        cpu.regs.flags.carry as i8
+    } else {
+        0
+    };
+    let (result, carry) = cpu.regs[Register8::A]
+        .overflowing_add_signed((cpu.regs[operand] as i8 + carry) * sign as i8);
     cpu.regs.flags.zero = result == 0;
     cpu.regs.flags.neg = (sign as i8) < 0;
     cpu.regs.flags.half_carry = result >> 4 != 0;
     cpu.regs.flags.carry = carry;
     4
+}
+
+fn add_register8_from_addr(cpu: &mut Cpu, reg_addr: Register16, sign: Sign, use_carry: bool) -> u8 {
+    let carry = if use_carry {
+        cpu.regs.flags.carry as i8
+    } else {
+        0
+    };
+    let val = cpu.memory.at(cpu.regs.combined(reg_addr));
+    let (result, carry) =
+        cpu.regs[Register8::A].overflowing_add_signed((val as i8 + carry) * sign as i8);
+    cpu.regs.flags.zero = result == 0;
+    cpu.regs.flags.neg = (sign as i8) < 0;
+    cpu.regs.flags.half_carry = result >> 4 != 0;
+    cpu.regs.flags.carry = carry;
+    8
 }
 
 const fn lo(n: u16) -> u8 {
