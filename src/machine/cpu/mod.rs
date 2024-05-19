@@ -13,10 +13,10 @@ pub struct Cpu<'a> {
 
 impl<'a> Cpu<'a> {
     fn fetch(&mut self) {
-        let opcode = self.increment_prog_counter();
+        let opcode = self.pop_prog_counter();
     }
 
-    fn increment_prog_counter(&mut self) -> u8 {
+    fn pop_prog_counter(&mut self) -> u8 {
         let mem = self.memory.at(self.regs.prog_counter);
         self.regs.prog_counter += 1;
         mem

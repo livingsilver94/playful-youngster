@@ -195,6 +195,22 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0xBD => cp_register8(cpu, L),
         0xBE => cp_register8_from_addr(cpu, HL),
         0xBF => cp_register8(cpu, A),
+        0xC0 => ret(cpu, Some(!cpu.regs.flags.zero)),
+        0xC1 => pop(cpu, BC),
+        0xC2 => jump_absolute(cpu, !cpu.regs.flags.zero),
+        0xC3 => jump_absolute(cpu, true),
+        0xC4 => call(cpu, !cpu.regs.flags.zero),
+        0xC5 => push(cpu, BC),
+        0xC6 => add_immediate(cpu, Positive, false),
+        0xC7 => rst(cpu, 0x00),
+        0xC8 => ret(cpu, Some(cpu.regs.flags.zero)),
+        0xC9 => ret(cpu, None),
+        0xCA => jump_absolute(cpu, cpu.regs.flags.zero),
+        0xCB => todo!(),
+        0xCC => call(cpu, cpu.regs.flags.zero),
+        0xCD => call(cpu, true),
+        0xCE => add_immediate(cpu, Positive, true),
+        0xCF => rst(cpu, 0x08),
         _ => unreachable!(),
     }
 }
@@ -204,8 +220,8 @@ fn nop(_cpu: &mut Cpu) -> u8 {
 }
 
 fn ld_register16_immediate(cpu: &mut Cpu, reg: Register16) -> u8 {
-    let lsb = cpu.increment_prog_counter();
-    let msb = cpu.increment_prog_counter();
+    let lsb = cpu.pop_prog_counter();
+    let msb = cpu.pop_prog_counter();
     cpu.regs.set_combined(reg, u16::from_le_bytes([lsb, msb]));
     12
 }
@@ -222,7 +238,7 @@ fn inc_register16(cpu: &mut Cpu, reg: Register16, val: i16) -> u8 {
 }
 
 fn ld_register8_immediate(cpu: &mut Cpu, reg: Register8) -> u8 {
-    cpu.regs[reg] = cpu.increment_prog_counter();
+    cpu.regs[reg] = cpu.pop_prog_counter();
     8
 }
 
@@ -245,8 +261,8 @@ fn rotate_circular_a(cpu: &mut Cpu, dir: Direction) -> u8 {
 }
 
 fn ld_from_stack_pointer_immediate(cpu: &mut Cpu) -> u8 {
-    let lsb = cpu.increment_prog_counter();
-    let msb = cpu.increment_prog_counter();
+    let lsb = cpu.pop_prog_counter();
+    let msb = cpu.pop_prog_counter();
     let addr = u16::from_le_bytes([lsb, msb]);
     *cpu.memory.at_mut(addr) = lo(cpu.regs.stack_pointer);
     *cpu.memory.at_mut(addr + 1) = hi(cpu.regs.stack_pointer);
@@ -281,7 +297,7 @@ fn inc_register8(cpu: &mut Cpu, reg: Register8, val: i8) -> u8 {
 
 fn stop(cpu: &mut Cpu) -> u8 {
     cpu.halted = false;
-    cpu.increment_prog_counter();
+    cpu.pop_prog_counter();
     4
 }
 
@@ -302,7 +318,7 @@ fn jump_relative(cpu: &mut Cpu, condition: bool) -> u8 {
     if !condition {
         return 8;
     }
-    let offset = cpu.increment_prog_counter() as i16;
+    let offset = cpu.pop_prog_counter() as i16;
     cpu.regs.prog_counter = ((cpu.regs.prog_counter as i16) + offset) as u16;
     12
 }
@@ -359,7 +375,7 @@ fn inc_addr(cpu: &mut Cpu, val: i8) -> u8 {
 }
 
 fn ld_addr_from_immediate(cpu: &mut Cpu) -> u8 {
-    let byte = cpu.increment_prog_counter();
+    let byte = cpu.pop_prog_counter();
     *cpu.memory.at_mut(cpu.regs.combined(Register16::HL)) = byte;
     12
 }
@@ -501,6 +517,98 @@ fn cp_register8_from_addr(cpu: &mut Cpu, reg_addr: Register16) -> u8 {
     cpu.regs.flags.half_carry = result >> 4 != 0;
     cpu.regs.flags.carry = carry;
     8
+}
+
+fn ret(cpu: &mut Cpu, condition: Option<bool>) -> u8 {
+    let (condition, cycles) = match condition {
+        Some(cond) => {
+            if cond {
+                (true, 20)
+            } else {
+                (false, 8)
+            }
+        }
+        None => (true, 16),
+    };
+    if !condition {
+        return cycles;
+    }
+    let lsb = cpu.memory.at(cpu.regs.stack_pointer);
+    cpu.regs.stack_pointer += 1;
+    let msb = cpu.memory.at(cpu.regs.stack_pointer);
+    cpu.regs.stack_pointer += 1;
+    let addr = u16::from_le_bytes([lsb, msb]);
+    cpu.regs.prog_counter = addr;
+    cycles
+}
+
+fn pop(cpu: &mut Cpu, dest: Register16) -> u8 {
+    let lsb = cpu.memory.at(cpu.regs.stack_pointer);
+    cpu.regs.stack_pointer += 1;
+    let msb = cpu.memory.at(cpu.regs.stack_pointer);
+    cpu.regs.stack_pointer += 1;
+    cpu.regs.set_combined(dest, u16::from_le_bytes([lsb, msb]));
+    12
+}
+
+fn jump_absolute(cpu: &mut Cpu, condition: bool) -> u8 {
+    if !condition {
+        return 12;
+    }
+    let lsb = cpu.pop_prog_counter();
+    let msb = cpu.pop_prog_counter();
+    cpu.regs.prog_counter = u16::from_le_bytes([lsb, msb]);
+    16
+}
+
+fn call(cpu: &mut Cpu, condition: bool) -> u8 {
+    // The subroutine address is read even if the condition is false!
+    let lsb = cpu.pop_prog_counter();
+    let msb = cpu.pop_prog_counter();
+    if !condition {
+        return 12;
+    }
+    cpu.regs.stack_pointer -= 1;
+    *cpu.memory.at_mut(cpu.regs.stack_pointer) = cpu.regs.prog_counter.to_be_bytes()[0];
+    cpu.regs.stack_pointer -= 1;
+    *cpu.memory.at_mut(cpu.regs.stack_pointer) = cpu.regs.prog_counter.to_be_bytes()[1];
+    cpu.regs.prog_counter = u16::from_le_bytes([lsb, msb]);
+    24
+}
+
+fn push(cpu: &mut Cpu, src: Register16) -> u8 {
+    let bytes = cpu.regs.combined(src).to_be_bytes();
+    cpu.regs.stack_pointer -= 1;
+    *cpu.memory.at_mut(cpu.regs.stack_pointer) = bytes[0];
+    cpu.regs.stack_pointer -= 1;
+    *cpu.memory.at_mut(cpu.regs.stack_pointer) = bytes[1];
+    16
+}
+
+fn add_immediate(cpu: &mut Cpu, sign: Sign, use_carry: bool) -> u8 {
+    let carry = if use_carry {
+        cpu.regs.flags.carry as i8
+    } else {
+        0
+    };
+    let operand = cpu.pop_prog_counter();
+    let (result, carry) =
+        cpu.regs[Register8::A].overflowing_add_signed((operand as i8 + carry) * sign as i8);
+    cpu.regs[Register8::A] = result;
+    cpu.regs.flags.zero = result == 0;
+    cpu.regs.flags.neg = (sign as i8) < 0;
+    cpu.regs.flags.half_carry = result >> 4 != 0;
+    cpu.regs.flags.carry = carry;
+    4
+}
+
+fn rst(cpu: &mut Cpu, lsb: u8) -> u8 {
+    cpu.regs.stack_pointer -= 1;
+    *cpu.memory.at_mut(cpu.regs.stack_pointer) = cpu.regs.prog_counter.to_be_bytes()[0];
+    cpu.regs.stack_pointer -= 1;
+    *cpu.memory.at_mut(cpu.regs.stack_pointer) = cpu.regs.prog_counter.to_be_bytes()[1];
+    cpu.regs.prog_counter = u16::from_le_bytes([lsb, 0x00]);
+    16
 }
 
 const fn lo(n: u16) -> u8 {
