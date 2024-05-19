@@ -5,7 +5,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
     match opcode {
         0x00 => nop(cpu),
         0x01 => ld_register16_immediate(cpu, BC),
-        0x02 => ld_to_addr_from_register8(cpu, BC, A),
+        0x02 => ld_addr_from_register8(cpu, BC, A),
         0x03 => inc_register16(cpu, BC, 1),
         0x04 => inc_register8(cpu, B, 1),
         0x05 => inc_register8(cpu, B, -1),
@@ -13,7 +13,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x07 => rotate_circular_a(cpu, Direction::Left),
         0x08 => ld_from_stack_pointer_immediate(cpu),
         0x09 => add_register16(cpu, HL, BC),
-        0x0A => ld_to_register8_from_addr(cpu, A, BC),
+        0x0A => ld_register8_from_addr(cpu, A, BC),
         0x0B => inc_register16(cpu, BC, -1),
         0x0C => inc_register8(cpu, C, 1),
         0x0D => inc_register8(cpu, C, -1),
@@ -21,7 +21,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x0F => rotate_circular_a(cpu, Direction::Right),
         0x10 => stop(cpu),
         0x11 => ld_register16_immediate(cpu, DE),
-        0x12 => ld_to_addr_from_register8(cpu, DE, A),
+        0x12 => ld_addr_from_register8(cpu, DE, A),
         0x13 => inc_register16(cpu, DE, 1),
         0x14 => inc_register8(cpu, D, 1),
         0x15 => inc_register8(cpu, D, -1),
@@ -29,7 +29,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x17 => rotate_a(cpu, Direction::Left),
         0x18 => jump_relative(cpu, true),
         0x19 => add_register16(cpu, HL, DE),
-        0x1A => ld_to_register8_from_addr(cpu, A, DE),
+        0x1A => ld_register8_from_addr(cpu, A, DE),
         0x1B => inc_register16(cpu, DE, -1),
         0x1C => inc_register8(cpu, E, 1),
         0x1D => inc_register8(cpu, E, -1),
@@ -37,7 +37,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x1F => rotate_a(cpu, Direction::Right),
         0x20 => jump_relative(cpu, !cpu.regs.flags.zero),
         0x21 => ld_register16_immediate(cpu, HL),
-        0x22 => ld_to_addr_from_a_increment(cpu, 1),
+        0x22 => ld_addr_from_a_increment(cpu, 1),
         0x23 => inc_register16(cpu, HL, 1),
         0x24 => inc_register8(cpu, H, 1),
         0x25 => inc_register8(cpu, H, -1),
@@ -45,7 +45,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x27 => daa(cpu),
         0x28 => jump_relative(cpu, cpu.regs.flags.zero),
         0x29 => add_register16(cpu, HL, HL),
-        0x2A => ld_to_a_from_addr_increment(cpu, 1),
+        0x2A => ld_a_from_addr_increment(cpu, 1),
         0x2B => inc_register16(cpu, HL, -1),
         0x2C => inc_register8(cpu, L, 1),
         0x2D => inc_register8(cpu, L, -1),
@@ -53,15 +53,15 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x2F => cpl(cpu),
         0x30 => jump_relative(cpu, !cpu.regs.flags.carry),
         0x31 => ld_register16_immediate(cpu, SP),
-        0x32 => ld_to_addr_from_a_increment(cpu, -1),
+        0x32 => ld_addr_from_a_increment(cpu, -1),
         0x33 => inc_register16(cpu, SP, 1),
         0x34 => inc_addr(cpu, 1),
         0x35 => inc_addr(cpu, -1),
-        0x36 => ld_to_addr_from_immediate(cpu),
+        0x36 => ld_addr_from_immediate(cpu),
         0x37 => scf(cpu),
         0x38 => jump_relative(cpu, cpu.regs.flags.carry),
         0x39 => add_register16(cpu, HL, SP),
-        0x3A => ld_to_a_from_addr_increment(cpu, -1),
+        0x3A => ld_a_from_addr_increment(cpu, -1),
         0x3B => inc_register16(cpu, SP, -1),
         0x3C => inc_register8(cpu, A, 1),
         0x3D => inc_register8(cpu, A, -1),
@@ -73,7 +73,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x43 => ld_register8(cpu, B, E),
         0x44 => ld_register8(cpu, B, H),
         0x45 => ld_register8(cpu, B, L),
-        0x46 => ld_to_register8_from_addr(cpu, B, HL),
+        0x46 => ld_register8_from_addr(cpu, B, HL),
         0x47 => ld_register8(cpu, B, A),
         0x48 => ld_register8(cpu, C, B),
         0x49 => ld_register8(cpu, C, C),
@@ -81,7 +81,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x4B => ld_register8(cpu, C, E),
         0x4C => ld_register8(cpu, C, H),
         0x4D => ld_register8(cpu, C, L),
-        0x4E => ld_to_register8_from_addr(cpu, C, HL),
+        0x4E => ld_register8_from_addr(cpu, C, HL),
         0x4F => ld_register8(cpu, C, A),
         0x50 => ld_register8(cpu, D, B),
         0x51 => ld_register8(cpu, D, C),
@@ -89,7 +89,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x53 => ld_register8(cpu, D, E),
         0x54 => ld_register8(cpu, D, H),
         0x55 => ld_register8(cpu, D, L),
-        0x56 => ld_to_register8_from_addr(cpu, D, HL),
+        0x56 => ld_register8_from_addr(cpu, D, HL),
         0x57 => ld_register8(cpu, D, A),
         0x58 => ld_register8(cpu, E, B),
         0x59 => ld_register8(cpu, E, C),
@@ -97,7 +97,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x5B => ld_register8(cpu, E, E),
         0x5C => ld_register8(cpu, E, H),
         0x5D => ld_register8(cpu, E, L),
-        0x5E => ld_to_register8_from_addr(cpu, E, HL),
+        0x5E => ld_register8_from_addr(cpu, E, HL),
         0x5F => ld_register8(cpu, E, A),
         0x60 => ld_register8(cpu, H, B),
         0x61 => ld_register8(cpu, H, C),
@@ -105,7 +105,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x63 => ld_register8(cpu, H, E),
         0x64 => ld_register8(cpu, H, H),
         0x65 => ld_register8(cpu, H, L),
-        0x66 => ld_to_register8_from_addr(cpu, H, HL),
+        0x66 => ld_register8_from_addr(cpu, H, HL),
         0x67 => ld_register8(cpu, H, A),
         0x68 => ld_register8(cpu, L, B),
         0x69 => ld_register8(cpu, L, C),
@@ -113,23 +113,23 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x6B => ld_register8(cpu, L, E),
         0x6C => ld_register8(cpu, L, H),
         0x6D => ld_register8(cpu, L, L),
-        0x6E => ld_to_register8_from_addr(cpu, L, HL),
+        0x6E => ld_register8_from_addr(cpu, L, HL),
         0x6F => ld_register8(cpu, L, A),
-        0x70 => ld_to_addr_from_register8(cpu, HL, B),
-        0x71 => ld_to_addr_from_register8(cpu, HL, C),
-        0x72 => ld_to_addr_from_register8(cpu, HL, D),
-        0x73 => ld_to_addr_from_register8(cpu, HL, E),
-        0x74 => ld_to_addr_from_register8(cpu, HL, H),
-        0x75 => ld_to_addr_from_register8(cpu, HL, L),
+        0x70 => ld_addr_from_register8(cpu, HL, B),
+        0x71 => ld_addr_from_register8(cpu, HL, C),
+        0x72 => ld_addr_from_register8(cpu, HL, D),
+        0x73 => ld_addr_from_register8(cpu, HL, E),
+        0x74 => ld_addr_from_register8(cpu, HL, H),
+        0x75 => ld_addr_from_register8(cpu, HL, L),
         0x76 => halt(cpu),
-        0x77 => ld_to_addr_from_register8(cpu, HL, A),
+        0x77 => ld_addr_from_register8(cpu, HL, A),
         0x78 => ld_register8(cpu, A, B),
         0x79 => ld_register8(cpu, A, C),
         0x7A => ld_register8(cpu, A, D),
         0x7B => ld_register8(cpu, A, E),
         0x7C => ld_register8(cpu, A, H),
         0x7D => ld_register8(cpu, A, L),
-        0x7E => ld_to_register8_from_addr(cpu, A, HL),
+        0x7E => ld_register8_from_addr(cpu, A, HL),
         0x7F => ld_register8(cpu, A, A),
         0x80 => add_register8(cpu, B, Positive, false),
         0x81 => add_register8(cpu, C, Positive, false),
@@ -179,6 +179,22 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0xAD => xor_register8(cpu, L),
         0xAE => xor_register8_from_addr(cpu, HL),
         0xAF => xor_register8(cpu, A),
+        0xB0 => or_register8(cpu, B),
+        0xB1 => or_register8(cpu, C),
+        0xB2 => or_register8(cpu, D),
+        0xB3 => or_register8(cpu, E),
+        0xB4 => or_register8(cpu, H),
+        0xB5 => or_register8(cpu, L),
+        0xB6 => or_register8_from_addr(cpu, HL),
+        0xB7 => or_register8(cpu, A),
+        0xB8 => cp_register8(cpu, B),
+        0xB9 => cp_register8(cpu, C),
+        0xBA => cp_register8(cpu, D),
+        0xBB => cp_register8(cpu, E),
+        0xBC => cp_register8(cpu, H),
+        0xBD => cp_register8(cpu, L),
+        0xBE => cp_register8_from_addr(cpu, HL),
+        0xBF => cp_register8(cpu, A),
         _ => unreachable!(),
     }
 }
@@ -194,7 +210,7 @@ fn ld_register16_immediate(cpu: &mut Cpu, reg: Register16) -> u8 {
     12
 }
 
-fn ld_to_addr_from_register8(cpu: &mut Cpu, reg_addr: Register16, src: Register8) -> u8 {
+fn ld_addr_from_register8(cpu: &mut Cpu, reg_addr: Register16, src: Register8) -> u8 {
     *cpu.memory.at_mut(cpu.regs.combined(reg_addr)) = cpu.regs[src];
     8
 }
@@ -249,7 +265,7 @@ fn add_register16(cpu: &mut Cpu, reg1: Register16, reg2: Register16) -> u8 {
     8
 }
 
-fn ld_to_register8_from_addr(cpu: &mut Cpu, dst: Register8, reg_addr: Register16) -> u8 {
+fn ld_register8_from_addr(cpu: &mut Cpu, dst: Register8, reg_addr: Register16) -> u8 {
     cpu.regs[dst] = cpu.memory.at(cpu.regs.combined(reg_addr));
     8
 }
@@ -291,8 +307,8 @@ fn jump_relative(cpu: &mut Cpu, condition: bool) -> u8 {
     12
 }
 
-fn ld_to_addr_from_a_increment(cpu: &mut Cpu, inc: i16) -> u8 {
-    ld_to_addr_from_register8(cpu, Register16::HL, Register8::A);
+fn ld_addr_from_a_increment(cpu: &mut Cpu, inc: i16) -> u8 {
+    ld_addr_from_register8(cpu, Register16::HL, Register8::A);
     cpu.regs.set_combined(
         Register16::HL,
         ((cpu.regs.combined(Register16::HL) as i16) + inc) as u16,
@@ -316,8 +332,8 @@ fn daa(cpu: &mut Cpu) -> u8 {
     4
 }
 
-fn ld_to_a_from_addr_increment(cpu: &mut Cpu, inc: i16) -> u8 {
-    ld_to_register8_from_addr(cpu, Register8::A, Register16::HL);
+fn ld_a_from_addr_increment(cpu: &mut Cpu, inc: i16) -> u8 {
+    ld_register8_from_addr(cpu, Register8::A, Register16::HL);
     cpu.regs.set_combined(
         Register16::HL,
         ((cpu.regs.combined(Register16::HL) as i16) + inc) as u16,
@@ -342,7 +358,7 @@ fn inc_addr(cpu: &mut Cpu, val: i8) -> u8 {
     12
 }
 
-fn ld_to_addr_from_immediate(cpu: &mut Cpu) -> u8 {
+fn ld_addr_from_immediate(cpu: &mut Cpu) -> u8 {
     let byte = cpu.increment_prog_counter();
     *cpu.memory.at_mut(cpu.regs.combined(Register16::HL)) = byte;
     12
@@ -386,6 +402,7 @@ fn add_register8(cpu: &mut Cpu, operand: Register8, sign: Sign, use_carry: bool)
     };
     let (result, carry) = cpu.regs[Register8::A]
         .overflowing_add_signed((cpu.regs[operand] as i8 + carry) * sign as i8);
+    cpu.regs[Register8::A] = result;
     cpu.regs.flags.zero = result == 0;
     cpu.regs.flags.neg = (sign as i8) < 0;
     cpu.regs.flags.half_carry = result >> 4 != 0;
@@ -402,6 +419,7 @@ fn add_register8_from_addr(cpu: &mut Cpu, reg_addr: Register16, sign: Sign, use_
     let val = cpu.memory.at(cpu.regs.combined(reg_addr));
     let (result, carry) =
         cpu.regs[Register8::A].overflowing_add_signed((val as i8 + carry) * sign as i8);
+    cpu.regs[Register8::A] = result;
     cpu.regs.flags.zero = result == 0;
     cpu.regs.flags.neg = (sign as i8) < 0;
     cpu.regs.flags.half_carry = result >> 4 != 0;
@@ -444,6 +462,44 @@ fn xor_register8_from_addr(cpu: &mut Cpu, reg_addr: Register16) -> u8 {
     cpu.regs.flags.neg = false;
     cpu.regs.flags.half_carry = false;
     cpu.regs.flags.carry = false;
+    8
+}
+
+fn or_register8(cpu: &mut Cpu, operand: Register8) -> u8 {
+    cpu.regs[Register8::A] |= cpu.regs[operand];
+    cpu.regs.flags.zero = cpu.regs[Register8::A] == 0;
+    cpu.regs.flags.neg = false;
+    cpu.regs.flags.half_carry = false;
+    cpu.regs.flags.carry = false;
+    4
+}
+
+fn or_register8_from_addr(cpu: &mut Cpu, reg_addr: Register16) -> u8 {
+    let val = cpu.memory.at(cpu.regs.combined(reg_addr));
+    cpu.regs[Register8::A] |= val;
+    cpu.regs.flags.zero = cpu.regs[Register8::A] == 0;
+    cpu.regs.flags.neg = false;
+    cpu.regs.flags.half_carry = false;
+    cpu.regs.flags.carry = false;
+    8
+}
+
+fn cp_register8(cpu: &mut Cpu, operand: Register8) -> u8 {
+    let (result, carry) = cpu.regs[Register8::A].overflowing_sub(cpu.regs[operand]);
+    cpu.regs.flags.zero = result == 0;
+    cpu.regs.flags.neg = true;
+    cpu.regs.flags.half_carry = result >> 4 != 0;
+    cpu.regs.flags.carry = carry;
+    4
+}
+
+fn cp_register8_from_addr(cpu: &mut Cpu, reg_addr: Register16) -> u8 {
+    let val = cpu.memory.at(cpu.regs.combined(reg_addr));
+    let (result, carry) = cpu.regs[Register8::A].overflowing_sub(val);
+    cpu.regs.flags.zero = result == 0;
+    cpu.regs.flags.neg = true;
+    cpu.regs.flags.half_carry = result >> 4 != 0;
+    cpu.regs.flags.carry = carry;
     8
 }
 
