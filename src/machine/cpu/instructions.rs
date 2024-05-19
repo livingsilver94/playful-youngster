@@ -211,6 +211,15 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0xCD => call(cpu, true),
         0xCE => add_immediate(cpu, Positive, true),
         0xCF => rst(cpu, 0x08),
+        0xD0 => ret(cpu, Some(!cpu.regs.flags.carry)),
+        0xD1 => pop(cpu, DE),
+        0xD2 => jump_absolute(cpu, !cpu.regs.flags.carry),
+        0xD3 => unreachable!(),
+        0xD4 => call(cpu, !cpu.regs.flags.carry),
+        0xD5 => push(cpu, DE),
+        0xD6 => add_immediate(cpu, Negative, false),
+        0xD7 => rst(cpu, 0x10),
+        0xD8 => ret(cpu, Some(cpu.regs.flags.carry)),
         _ => unreachable!(),
     }
 }
