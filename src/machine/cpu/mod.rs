@@ -9,6 +9,7 @@ pub struct Cpu<'a> {
     memory: &'a mut memory::Memory,
 
     halted: bool,
+    interrupt_enabled: bool,
 }
 
 impl<'a> Cpu<'a> {
