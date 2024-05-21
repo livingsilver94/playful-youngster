@@ -1,5 +1,9 @@
 mod machine;
 
+use crate::machine::cpu;
+use crate::machine::memory;
+
 fn main() {
-    println!("Hello, world!");
+    let mut mmu = memory::Mmu::new();
+    let cpu = cpu::Cpu::new(&mut mmu);
 }

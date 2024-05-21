@@ -6,13 +6,22 @@ use crate::machine::memory;
 
 pub struct Cpu<'a> {
     regs: Registers,
-    memory: &'a mut memory::Memory,
+    memory: &'a mut memory::Mmu,
 
     halted: bool,
     interrupt_enabled: bool,
 }
 
 impl<'a> Cpu<'a> {
+    pub fn new(mmu: &'a mut memory::Mmu) -> Self {
+        Self {
+            regs: Default::default(),
+            memory: mmu,
+            halted: false,
+            interrupt_enabled: true,
+        }
+    }
+
     fn fetch(&mut self) {
         let opcode = self.pop_prog_counter();
     }
@@ -24,7 +33,7 @@ impl<'a> Cpu<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 struct Flags {
     zero: bool,
     neg: bool,
@@ -43,6 +52,7 @@ impl From<u8> for Flags {
     }
 }
 
+#[derive(Default)]
 struct Registers {
     a: u8,
     b: u8,
