@@ -22,6 +22,14 @@ impl Mmu {
     }
 }
 
+pub trait MemMapRead {
+    fn read_as_mem(&self) -> [u8];
+}
+
+pub trait MemMapWrite {
+    fn write_as_mem(&mut self, data: &[u8]);
+}
+
 const WORK_RAM_START: u16 = 0xC000;
 const WORK_RAM_END: u16 = 0xCFFF;
 const WORK_RAM: RangeInclusive<u16> = WORK_RAM_START..=WORK_RAM_END;
