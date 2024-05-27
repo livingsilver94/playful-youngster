@@ -6,14 +6,14 @@ use crate::machine::memory;
 
 pub struct Cpu<'a> {
     regs: Registers,
-    memory: &'a mut memory::Mmu,
+    memory: &'a mut memory::Mmu<'a>,
 
     halted: bool,
     interrupt_enabled: bool,
 }
 
 impl<'a> Cpu<'a> {
-    pub fn new(mmu: &'a mut memory::Mmu) -> Self {
+    pub fn new(mmu: &'a mut memory::Mmu<'a>) -> Self {
         Self {
             regs: Default::default(),
             memory: mmu,

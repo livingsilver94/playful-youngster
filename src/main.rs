@@ -1,9 +1,12 @@
 mod machine;
 
 use crate::machine::cpu;
+use crate::machine::keypad;
 use crate::machine::memory;
 
 fn main() {
+    let key = keypad::Keypad::new();
     let mut mmu = memory::Mmu::new();
-    let cpu = cpu::Cpu::new(&mut mmu);
+    mmu.register_interrupt(memory::Interrupt::Four, &key);
+    let mut cpu = cpu::Cpu::new(&mut mmu);
 }
