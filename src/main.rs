@@ -1,11 +1,9 @@
 mod machine;
 
-use crate::machine::cpu;
-use crate::machine::keypad;
-use crate::machine::memory;
+use machine::Emulator;
+use machine::Hardware;
 
 fn main() {
-    let key = keypad::Keypad::new();
-    let mut mmu = memory::Mmu::new_gb(&key);
-    let mut cpu = cpu::Cpu::new(&mut mmu);
+    let hw = Hardware::default();
+    let emu = Emulator::new_gb(&hw);
 }

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
 use std::{borrow, cmp};
 
-use crate::keypad::Keypad;
+use crate::machine::keypad::Keypad;
 
 pub struct Mmu<'a> {
     work_ram: [u8; (WORK_RAM_END - WORK_RAM_START + 1) as usize],

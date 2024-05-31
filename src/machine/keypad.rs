@@ -1,4 +1,4 @@
-use crate::memory::{MemMapped, Peripheral};
+use crate::machine::memory::{MemMapped, Peripheral};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Button {
