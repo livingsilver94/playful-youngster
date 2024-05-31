@@ -1,4 +1,4 @@
-use crate::memory::{MemMapRead, MemMapWrite, Peripheral};
+use crate::memory::{MemMapped, Peripheral};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Button {
@@ -40,7 +40,7 @@ impl Keypad {
     }
 }
 
-impl MemMapRead for Keypad {
+impl MemMapped for Keypad {
     fn read_mem_mapped(&self, idx: usize) -> Option<u8> {
         if idx != 0 {
             return None;
@@ -53,9 +53,7 @@ impl MemMapRead for Keypad {
         }
         Some(0xF)
     }
-}
 
-impl MemMapWrite for Keypad {
     fn write_mem_mapped(&mut self, data: &[u8]) -> Result<(), ()> {
         self.btns.selected = (data[0] & (1 << 5)) == 0;
         self.btns.selected = (data[0] & (1 << 4)) == 0;

@@ -1,22 +1,22 @@
+use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
+use std::{borrow, cmp};
+
+use crate::keypad::Keypad;
 
 pub struct Mmu<'a> {
     work_ram: [u8; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
     echo_ram: [u8; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
+    devices: Devices<'a>,
     interrupts: Interrupts<'a>,
 }
 
 impl<'a> Mmu<'a> {
-    pub fn new() -> Self {
-        Self {
-            work_ram: [0; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
-            echo_ram: [0; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
-            interrupts: Interrupts::new(),
-        }
-    }
-
-    pub fn register_interrupt(&mut self, idx: Interrupt, per: &'a dyn Peripheral) {
-        self.interrupts.register(idx, per);
+    pub fn new_gb(keys: &'a Keypad) -> Self {
+        let mut ret = Self::default();
+        ret.devices.register(0xFF00..=0xFF00, keys);
+        ret.interrupts.register(Interrupt::Four, keys);
+        ret
     }
 
     pub fn at(&self, addr: u16) -> u8 {
@@ -28,12 +28,25 @@ impl<'a> Mmu<'a> {
     }
 }
 
-pub trait MemMapRead {
-    fn read_mem_mapped(&self, idx: usize) -> Option<u8>;
+impl<'a> Default for Mmu<'a> {
+    fn default() -> Self {
+        Self {
+            work_ram: [0; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
+            echo_ram: [0; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
+            devices: Default::default(),
+            interrupts: Default::default(),
+        }
+    }
 }
 
-pub trait MemMapWrite {
+pub trait MemMapped {
+    fn read_mem_mapped(&self, idx: usize) -> Option<u8>;
+
     fn write_mem_mapped(&mut self, data: &[u8]) -> Result<(), ()>;
+}
+
+pub trait Peripheral {
+    fn has_interrupt(&self) -> bool;
 }
 
 #[derive(Clone, Copy)]
@@ -45,6 +58,65 @@ pub enum Interrupt {
     Zero = 0,
 }
 
+#[derive(Default)]
+struct Devices<'a>(BTreeMap<AddrRange, &'a dyn MemMapped>);
+
+impl<'a> Devices<'a> {
+    fn get(&self, addr: u16) -> Option<&&'a dyn MemMapped> {
+        self.0.range(..=addr).next_back().and_then(|(range, dev)| {
+            if range.contains(addr) {
+                return Some(dev);
+            }
+            None
+        })
+    }
+
+    fn register(&mut self, range: impl Into<AddrRange>, dev: &'a dyn MemMapped) {
+        self.0.insert(range.into(), dev);
+    }
+}
+
+struct AddrRange(core::ops::RangeInclusive<u16>);
+
+impl AddrRange {
+    fn contains(&self, addr: u16) -> bool {
+        self.0.contains(&addr)
+    }
+}
+
+impl PartialEq for AddrRange {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.start() == other.0.start()
+    }
+}
+
+impl Eq for AddrRange {}
+
+impl PartialOrd for AddrRange {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for AddrRange {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.0.start().cmp(other.0.start())
+    }
+}
+
+impl borrow::Borrow<u16> for AddrRange {
+    fn borrow(&self) -> &u16 {
+        self.0.start()
+    }
+}
+
+impl From<RangeInclusive<u16>> for AddrRange {
+    fn from(value: RangeInclusive<u16>) -> Self {
+        Self(value)
+    }
+}
+
+#[derive(Default)]
 struct Interrupts<'a> {
     peripherals: [Option<&'a dyn Peripheral>; 5],
 }
@@ -61,7 +133,7 @@ impl<'a> Interrupts<'a> {
     }
 }
 
-impl<'a> MemMapRead for Interrupts<'a> {
+impl<'a> MemMapped for Interrupts<'a> {
     fn read_mem_mapped(&self, idx: usize) -> Option<u8> {
         if idx > 0 {
             return None;
@@ -75,10 +147,10 @@ impl<'a> MemMapRead for Interrupts<'a> {
         }
         Some(byte)
     }
-}
 
-pub trait Peripheral {
-    fn has_interrupt(&self) -> bool;
+    fn write_mem_mapped(&mut self, data: &[u8]) -> Result<(), ()> {
+        Ok(())
+    }
 }
 
 const WORK_RAM_START: u16 = 0xC000;

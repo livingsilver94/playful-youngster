@@ -6,7 +6,6 @@ use crate::machine::memory;
 
 fn main() {
     let key = keypad::Keypad::new();
-    let mut mmu = memory::Mmu::new();
-    mmu.register_interrupt(memory::Interrupt::Four, &key);
+    let mut mmu = memory::Mmu::new_gb(&key);
     let mut cpu = cpu::Cpu::new(&mut mmu);
 }
