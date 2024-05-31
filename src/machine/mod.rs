@@ -6,6 +6,7 @@ mod apu;
 pub mod cpu;
 pub mod keypad;
 pub mod memory;
+mod timer;
 
 #[derive(Default)]
 pub struct Hardware {
