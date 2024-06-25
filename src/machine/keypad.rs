@@ -54,9 +54,12 @@ impl MemMapped for Keypad {
         Some(0xF)
     }
 
-    fn write_mem_mapped(&mut self, data: &[u8]) -> Result<(), ()> {
-        self.btns.selected = (data[0] & (1 << 5)) == 0;
-        self.btns.selected = (data[0] & (1 << 4)) == 0;
+    fn write_mem_mapped(&mut self, idx: usize, val: u8) -> Result<(), ()> {
+        if idx != 0 {
+            return Err(());
+        }
+        self.btns.selected = (val & (1 << 5)) == 0;
+        self.btns.selected = (val & (1 << 4)) == 0;
         Ok(())
     }
 }

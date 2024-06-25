@@ -42,7 +42,7 @@ impl<'a> Default for Mmu<'a> {
 pub trait MemMapped {
     fn read_mem_mapped(&self, idx: usize) -> Option<u8>;
 
-    fn write_mem_mapped(&mut self, data: &[u8]) -> Result<(), ()>;
+    fn write_mem_mapped(&mut self, idx: usize, val: u8) -> Result<(), ()>;
 }
 
 pub trait Peripheral {
@@ -148,7 +148,7 @@ impl<'a> MemMapped for Interrupts<'a> {
         Some(byte)
     }
 
-    fn write_mem_mapped(&mut self, data: &[u8]) -> Result<(), ()> {
+    fn write_mem_mapped(&mut self, idx: usize, val: u8) -> Result<(), ()> {
         Ok(())
     }
 }
