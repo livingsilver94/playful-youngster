@@ -6,6 +6,7 @@ use crate::machine::keypad::Keypad;
 use crate::machine::timer::Timer;
 
 pub struct Mmu<'a> {
+    video_ram: [u8; (VIDEO_RAM_END - VIDEO_RAM_START + 1) as usize],
     work_ram: [u8; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
     echo_ram: [u8; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
     devices: Devices<'a>,
@@ -36,6 +37,7 @@ impl<'a> Mmu<'a> {
 impl<'a> Default for Mmu<'a> {
     fn default() -> Self {
         Self {
+            video_ram: [0; (VIDEO_RAM_END - VIDEO_RAM_START + 1) as usize],
             work_ram: [0; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
             echo_ram: [0; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
             devices: Default::default(),
@@ -157,6 +159,10 @@ impl<'a> MemMapped for Interrupts<'a> {
         Ok(())
     }
 }
+
+const VIDEO_RAM_START: u16 = 0x8000;
+const VIDEO_RAM_END: u16 = 0x9FFF;
+const VIDEO_RAM: RangeInclusive<u16> = VIDEO_RAM_START..=VIDEO_RAM_END;
 
 const WORK_RAM_START: u16 = 0xC000;
 const WORK_RAM_END: u16 = 0xCFFF;
