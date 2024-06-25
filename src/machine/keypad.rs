@@ -2,14 +2,14 @@ use crate::machine::memory::{MemMapped, Peripheral};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Button {
-    Right,
-    Left,
-    Up,
-    Down,
-    A,
-    B,
-    Select,
-    Start,
+    Right = 0,
+    Left = 1,
+    Up = 2,
+    Down = 3,
+    A = 4,
+    B = 5,
+    Select = 6,
+    Start = 7,
 }
 
 #[derive(Default)]
