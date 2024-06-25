@@ -2,6 +2,7 @@ use crate::machine::memory::MemMapped;
 
 use super::memory::Peripheral;
 
+#[derive(Default)]
 pub struct Timer {
     /// The master counter. The most significant 8 bits are exposed through a register, so that
     /// divider is also used as a timer that ticks every 256 CPU clock ticks.

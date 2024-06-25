@@ -3,6 +3,7 @@ use std::ops::RangeInclusive;
 use std::{borrow, cmp};
 
 use crate::machine::keypad::Keypad;
+use crate::machine::timer::Timer;
 
 pub struct Mmu<'a> {
     work_ram: [u8; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
@@ -12,10 +13,14 @@ pub struct Mmu<'a> {
 }
 
 impl<'a> Mmu<'a> {
-    pub fn new_gb(keys: &'a Keypad) -> Self {
+    pub fn new_gb(keys: &'a Keypad, timer: &'a Timer) -> Self {
         let mut ret = Self::default();
+
         ret.devices.register(0xFF00..=0xFF00, keys);
+        ret.devices.register(0xFF04..=0xFF07, timer);
+
         ret.interrupts.register(Interrupt::Four, keys);
+        ret.interrupts.register(Interrupt::Two, timer);
         ret
     }
 
