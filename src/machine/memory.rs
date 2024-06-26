@@ -9,6 +9,7 @@ pub struct Mmu<'a> {
     video_ram: [u8; (VIDEO_RAM_END - VIDEO_RAM_START + 1) as usize],
     work_ram: [u8; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
     echo_ram: [u8; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
+    oam_ram: [u8; (OAM_RAM_END - OAM_RAM_START + 1) as usize],
     devices: Devices<'a>,
     interrupts: Interrupts<'a>,
 }
@@ -17,7 +18,8 @@ impl<'a> Mmu<'a> {
     pub fn new_gb(keys: &'a Keypad, timer: &'a Timer) -> Self {
         let mut ret = Self::default();
 
-        ret.devices.register(0xFF00..=0xFF00, keys);
+        ret.devices
+            .register(MAPPED_IO_START..=MAPPED_IO_START, keys);
         ret.devices.register(0xFF04..=0xFF07, timer);
 
         ret.interrupts.register(Interrupt::Four, keys);
@@ -26,7 +28,19 @@ impl<'a> Mmu<'a> {
     }
 
     pub fn at(&self, addr: u16) -> u8 {
-        *self.work_ram.get(addr as usize).unwrap()
+        match addr {
+            VIDEO_RAM_START..=VIDEO_RAM_END => self.video_ram[(addr - VIDEO_RAM_START) as usize],
+            WORK_RAM_START..=WORK_RAM_END => self.work_ram[(addr - WORK_RAM_START) as usize],
+            ECHO_RAM_START..=ECHO_RAM_END => self.echo_ram[(addr - ECHO_RAM_START) as usize],
+            OAM_RAM_START..=OAM_RAM_END => self.oam_ram[(addr - OAM_RAM_START) as usize],
+            MAPPED_IO_START..=MAPPED_IO_END => {
+                let (device, start_addr) = self.devices.get(addr).unwrap();
+                device
+                    .read_mem_mapped((addr - start_addr) as usize)
+                    .unwrap()
+            }
+            _ => panic!(),
+        }
     }
 
     pub fn at_mut(&mut self, addr: u16) -> &mut u8 {
@@ -40,6 +54,7 @@ impl<'a> Default for Mmu<'a> {
             video_ram: [0; (VIDEO_RAM_END - VIDEO_RAM_START + 1) as usize],
             work_ram: [0; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
             echo_ram: [0; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
+            oam_ram: [0; (OAM_RAM_END - OAM_RAM_START + 1) as usize],
             devices: Default::default(),
             interrupts: Default::default(),
         }
@@ -69,10 +84,10 @@ pub enum Interrupt {
 struct Devices<'a>(BTreeMap<AddrRange, &'a dyn MemMapped>);
 
 impl<'a> Devices<'a> {
-    fn get(&self, addr: u16) -> Option<&&'a dyn MemMapped> {
+    fn get(&self, addr: u16) -> Option<(&&'a dyn MemMapped, u16)> {
         self.0.range(..=addr).next_back().and_then(|(range, dev)| {
             if range.contains(addr) {
-                return Some(dev);
+                return Some((dev, range.start()));
             }
             None
         })
@@ -88,6 +103,10 @@ struct AddrRange(core::ops::RangeInclusive<u16>);
 impl AddrRange {
     fn contains(&self, addr: u16) -> bool {
         self.0.contains(&addr)
+    }
+
+    fn start(&self) -> u16 {
+        *self.0.start()
     }
 }
 
@@ -162,12 +181,15 @@ impl<'a> MemMapped for Interrupts<'a> {
 
 const VIDEO_RAM_START: u16 = 0x8000;
 const VIDEO_RAM_END: u16 = 0x9FFF;
-const VIDEO_RAM: RangeInclusive<u16> = VIDEO_RAM_START..=VIDEO_RAM_END;
 
 const WORK_RAM_START: u16 = 0xC000;
 const WORK_RAM_END: u16 = 0xCFFF;
-const WORK_RAM: RangeInclusive<u16> = WORK_RAM_START..=WORK_RAM_END;
 
 const ECHO_RAM_START: u16 = 0xD000;
 const ECHO_RAM_END: u16 = 0xDFFF;
-const ECHO_RAM: RangeInclusive<u16> = ECHO_RAM_START..=ECHO_RAM_END;
+
+const OAM_RAM_START: u16 = 0xFE00;
+const OAM_RAM_END: u16 = 0xFE9F;
+
+const MAPPED_IO_START: u16 = 0xFF00;
+const MAPPED_IO_END: u16 = 0xFF7F;
