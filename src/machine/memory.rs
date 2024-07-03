@@ -2,29 +2,37 @@ use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
 use std::{borrow, cmp};
 
+use crate::machine::graphics::gpu;
 use crate::machine::keypad::Keypad;
 use crate::machine::timer::Timer;
 
 pub struct Mmu<'a> {
-    video_ram: [u8; (VIDEO_RAM_END - VIDEO_RAM_START + 1) as usize],
     work_ram: [u8; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
     echo_ram: [u8; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
-    oam_ram: [u8; (OAM_RAM_END - OAM_RAM_START + 1) as usize],
+    oam_ram: &'a mut [u8; gpu::OAM_RAM_SIZE],
+    video_ram: &'a mut [u8; gpu::VRAM_SIZE],
     devices: Devices<'a>,
     interrupts: Interrupts<'a>,
 }
 
 impl<'a> Mmu<'a> {
-    pub fn new_gb(keys: &'a Keypad, timer: &'a Timer) -> Self {
-        let mut ret = Self::default();
+    pub fn new_gb(gpu: &'a mut gpu::Gpu, keys: &'a Keypad, timer: &'a Timer) -> Self {
+        let mut mmu = Self {
+            work_ram: [0; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
+            echo_ram: [0; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
+            oam_ram: &mut gpu.oam_ram,
+            video_ram: &mut gpu.video_ram,
+            devices: Default::default(),
+            interrupts: Default::default(),
+        };
 
-        ret.devices
+        mmu.devices
             .register(MAPPED_IO_START..=MAPPED_IO_START, keys);
-        ret.devices.register(0xFF04..=0xFF07, timer);
+        mmu.devices.register(0xFF04..=0xFF07, timer);
 
-        ret.interrupts.register(Interrupt::Four, keys);
-        ret.interrupts.register(Interrupt::Two, timer);
-        ret
+        mmu.interrupts.register(Interrupt::Four, keys);
+        mmu.interrupts.register(Interrupt::Two, timer);
+        mmu
     }
 
     pub fn at(&self, addr: u16) -> u8 {
@@ -45,19 +53,6 @@ impl<'a> Mmu<'a> {
 
     pub fn at_mut(&mut self, addr: u16) -> &mut u8 {
         self.work_ram.get_mut(addr as usize).unwrap()
-    }
-}
-
-impl<'a> Default for Mmu<'a> {
-    fn default() -> Self {
-        Self {
-            video_ram: [0; (VIDEO_RAM_END - VIDEO_RAM_START + 1) as usize],
-            work_ram: [0; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
-            echo_ram: [0; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
-            oam_ram: [0; (OAM_RAM_END - OAM_RAM_START + 1) as usize],
-            devices: Default::default(),
-            interrupts: Default::default(),
-        }
     }
 }
 

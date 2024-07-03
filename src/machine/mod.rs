@@ -1,18 +1,30 @@
+mod apu;
+mod cpu;
+mod graphics;
+mod keypad;
+mod memory;
+mod timer;
+
 use cpu::Cpu;
+use graphics::gpu::Gpu;
 use keypad::Keypad;
 use memory::Mmu;
 use timer::Timer;
 
-mod apu;
-pub mod cpu;
-pub mod keypad;
-pub mod memory;
-mod timer;
-
-#[derive(Default)]
 pub struct Hardware {
-    key: Keypad,
+    gpu: Gpu,
+    keypad: Keypad,
     timer: Timer,
+}
+
+impl Hardware {
+    pub fn new_gb() -> Self {
+        Self {
+            gpu: Gpu::new_gb(),
+            keypad: Keypad::new(),
+            timer: Timer::default(),
+        }
+    }
 }
 
 pub struct Emulator<'a> {
@@ -20,9 +32,8 @@ pub struct Emulator<'a> {
 }
 
 impl<'a> Emulator<'a> {
-    pub fn new_gb(hw: &'a Hardware) -> Self {
-        Self {
-            cpu: Cpu::new(Mmu::new_gb(&hw.key, &hw.timer)),
-        }
+    pub fn new_gb(hw: &'a mut Hardware) -> Self {
+        let mmu = Mmu::new_gb(&mut hw.gpu, &hw.keypad, &hw.timer);
+        Self { cpu: Cpu::new(mmu) }
     }
 }

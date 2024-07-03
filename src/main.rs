@@ -4,6 +4,6 @@ use machine::Emulator;
 use machine::Hardware;
 
 fn main() {
-    let hw = Hardware::default();
-    let emu = Emulator::new_gb(&hw);
+    let mut hw = Hardware::new_gb();
+    let emu = Emulator::new_gb(&mut hw);
 }
