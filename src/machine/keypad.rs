@@ -1,4 +1,4 @@
-use crate::machine::memory::{Interruptible, MemMapped};
+use crate::machine::memory::{Interruptible, RegisterReadWrite};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Button {
@@ -40,8 +40,8 @@ impl Keypad {
     }
 }
 
-impl MemMapped for Keypad {
-    fn read_memmapped(&self, idx: usize) -> u8 {
+impl RegisterReadWrite for Keypad {
+    fn read_register(&self, idx: usize) -> u8 {
         if idx > 0 {
             panic!("keypad maps only one byte")
         }
@@ -54,7 +54,7 @@ impl MemMapped for Keypad {
         0xF
     }
 
-    fn write_memmapped(&mut self, idx: usize, val: u8) {
+    fn write_register(&mut self, idx: usize, val: u8) {
         if idx > 0 {
             panic!("keypad maps only one byte")
         }

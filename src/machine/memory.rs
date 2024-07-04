@@ -23,17 +23,17 @@ impl<'a> Mmu<'a> {
 
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
-            VIDEO_RAM_START..=VIDEO_RAM_END => self.video_ram[(addr - VIDEO_RAM_START) as usize],
+            VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.read_video_ram(addr),
             WORK_RAM_START..=WORK_RAM_END => self.work_ram[(addr - WORK_RAM_START) as usize],
             ECHO_RAM_START..=ECHO_RAM_END => self.echo_ram[(addr - ECHO_RAM_START) as usize],
-            OAM_RAM_START..=OAM_RAM_END => self.oam_ram[(addr - OAM_RAM_START) as usize],
+            OAM_RAM_START..=OAM_RAM_END => self.gpu.read_oam_ram(addr),
 
             MAPPED_KEYPAD_START..=MAPPED_KEYPAD_END => self
                 .keypad
-                .read_memmapped((addr - MAPPED_KEYPAD_START) as usize),
+                .read_register((addr - MAPPED_KEYPAD_START) as usize),
             MAPPED_TIMER_START..=MAPPED_TIMER_END => self
                 .timer
-                .read_memmapped((addr - MAPPED_TIMER_START) as usize),
+                .read_register((addr - MAPPED_TIMER_START) as usize),
 
             INTERRUPTS_START..=INTERRUPTS_END => self.read_interrupts(),
             _ => unreachable!(),
@@ -58,10 +58,10 @@ impl<'a> Mmu<'a> {
     }
 }
 
-pub trait MemMapped {
-    fn read_memmapped(&self, idx: usize) -> u8;
+pub trait RegisterReadWrite {
+    fn read_register(&self, idx: usize) -> u8;
 
-    fn write_memmapped(&mut self, idx: usize, val: u8);
+    fn write_register(&mut self, idx: usize, val: u8);
 }
 
 pub trait Interruptible {

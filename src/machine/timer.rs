@@ -1,4 +1,4 @@
-use crate::machine::memory::MemMapped;
+use crate::machine::memory::RegisterReadWrite;
 
 use super::memory::Interruptible;
 
@@ -53,8 +53,8 @@ impl Timer {
     }
 }
 
-impl MemMapped for Timer {
-    fn read_memmapped(&self, idx: usize) -> u8 {
+impl RegisterReadWrite for Timer {
+    fn read_register(&self, idx: usize) -> u8 {
         match idx {
             0 => (self.divider >> 8) as u8,
             1 => self.counter,
@@ -64,7 +64,7 @@ impl MemMapped for Timer {
         }
     }
 
-    fn write_memmapped(&mut self, idx: usize, val: u8) {
+    fn write_register(&mut self, idx: usize, val: u8) {
         match idx {
             0 => {
                 self.divider = 0;
