@@ -1,4 +1,4 @@
-use crate::machine::memory::{MemMapped, Peripheral};
+use crate::machine::memory::{Interruptible, MemMapped};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Button {
@@ -41,30 +41,29 @@ impl Keypad {
 }
 
 impl MemMapped for Keypad {
-    fn read_mem_mapped(&self, idx: usize) -> Option<u8> {
-        if idx != 0 {
-            return None;
+    fn read_memmapped(&self, idx: usize) -> u8 {
+        if idx > 0 {
+            panic!("keypad maps only one byte")
         }
         if self.dpad.selected {
-            return Some(self.dpad.values);
+            return self.dpad.values;
         }
         if self.btns.selected {
-            return Some(self.btns.values);
+            return self.btns.values;
         }
-        Some(0xF)
+        0xF
     }
 
-    fn write_mem_mapped(&mut self, idx: usize, val: u8) -> Result<(), ()> {
-        if idx != 0 {
-            return Err(());
+    fn write_memmapped(&mut self, idx: usize, val: u8) {
+        if idx > 0 {
+            panic!("keypad maps only one byte")
         }
         self.btns.selected = (val & (1 << 5)) == 0;
         self.btns.selected = (val & (1 << 4)) == 0;
-        Ok(())
     }
 }
 
-impl Peripheral for Keypad {
+impl Interruptible for Keypad {
     fn has_interrupt(&self) -> bool {
         self.interrupt_raised
     }

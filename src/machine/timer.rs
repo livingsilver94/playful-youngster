@@ -1,6 +1,6 @@
 use crate::machine::memory::MemMapped;
 
-use super::memory::Peripheral;
+use super::memory::Interruptible;
 
 #[derive(Default)]
 pub struct Timer {
@@ -54,14 +54,17 @@ impl Timer {
 }
 
 impl MemMapped for Timer {
-    fn read_mem_mapped(&self, idx: usize) -> Option<u8> {
-        Some(match idx {
+    fn read_memmapped(&self, idx: usize) -> u8 {
+        match idx {
             0 => (self.divider >> 8) as u8,
-            _ => return None,
-        })
+            1 => self.counter,
+            2 => self.modulo,
+            3 => unimplemented!(), // FIXME: Do games read this value at all?
+            _ => panic!("timer maps only 4 bytes"),
+        }
     }
 
-    fn write_mem_mapped(&mut self, idx: usize, val: u8) -> Result<(), ()> {
+    fn write_memmapped(&mut self, idx: usize, val: u8) {
         match idx {
             0 => {
                 self.divider = 0;
@@ -79,13 +82,12 @@ impl MemMapped for Timer {
                     _ => unreachable!(),
                 };
             }
-            _ => return Err(()),
+            _ => panic!("timer maps only 4 bytes"),
         }
-        Ok(())
     }
 }
 
-impl Peripheral for Timer {
+impl Interruptible for Timer {
     fn has_interrupt(&self) -> bool {
         self.interrupt
     }

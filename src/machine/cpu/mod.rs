@@ -27,7 +27,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn pop_prog_counter(&mut self) -> u8 {
-        let mem = self.memory.at(self.regs.prog_counter);
+        let mem = self.memory.read(self.regs.prog_counter);
         self.regs.prog_counter += 1;
         mem
     }

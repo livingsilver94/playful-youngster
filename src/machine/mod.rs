@@ -33,7 +33,7 @@ pub struct Emulator<'a> {
 
 impl<'a> Emulator<'a> {
     pub fn new_gb(hw: &'a mut Hardware) -> Self {
-        let mmu = Mmu::new_gb(&mut hw.gpu, &hw.keypad, &hw.timer);
+        let mmu = Mmu::new_gb(&mut hw.gpu, &mut hw.keypad, &mut hw.timer);
         Self { cpu: Cpu::new(mmu) }
     }
 }

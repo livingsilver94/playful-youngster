@@ -245,7 +245,7 @@ impl Operand {
     fn value(self, cpu: &mut Cpu) -> u8 {
         match self {
             Self::Reg(reg) => cpu.regs[reg],
-            Self::Addr(reg) => cpu.memory.at(cpu.regs.combined(reg)),
+            Self::Addr(reg) => cpu.memory.read(cpu.regs.combined(reg)),
         }
     }
 
@@ -265,7 +265,7 @@ fn ld_register16_immediate(cpu: &mut Cpu, reg: Register16) -> u8 {
 }
 
 fn ld_addr_from_register8(cpu: &mut Cpu, reg_addr: Register16, src: Register8) -> u8 {
-    *cpu.memory.at_mut(cpu.regs.combined(reg_addr)) = cpu.regs[src];
+    cpu.memory.write(cpu.regs.combined(reg_addr), cpu.regs[src]);
     8
 }
 
@@ -302,8 +302,8 @@ fn ld_from_stack_pointer_immediate(cpu: &mut Cpu) -> u8 {
     let lsb = cpu.pop_prog_counter();
     let msb = cpu.pop_prog_counter();
     let addr = u16::from_le_bytes([lsb, msb]);
-    *cpu.memory.at_mut(addr) = lo(cpu.regs.stack_pointer);
-    *cpu.memory.at_mut(addr + 1) = hi(cpu.regs.stack_pointer);
+    cpu.memory.write(addr, lo(cpu.regs.stack_pointer));
+    cpu.memory.write(addr + 1, hi(cpu.regs.stack_pointer));
     20
 }
 
@@ -320,7 +320,7 @@ fn add_register16(cpu: &mut Cpu, reg1: Register16, reg2: Register16) -> u8 {
 }
 
 fn ld_register8_from_addr(cpu: &mut Cpu, dst: Register8, reg_addr: Register16) -> u8 {
-    cpu.regs[dst] = cpu.memory.at(cpu.regs.combined(reg_addr));
+    cpu.regs[dst] = cpu.memory.read(cpu.regs.combined(reg_addr));
     8
 }
 
@@ -403,9 +403,9 @@ fn cpl(cpu: &mut Cpu) -> u8 {
 }
 
 fn inc_addr(cpu: &mut Cpu, val: i8) -> u8 {
-    let byte = cpu.memory.at_mut(cpu.regs.combined(Register16::HL));
+    let byte = cpu.memory.read(cpu.regs.combined(Register16::HL));
     let (result, carry) = byte.overflowing_add_signed(val);
-    *byte = result;
+    cpu.memory.write(cpu.regs.combined(Register16::HL), result);
     cpu.regs.flags.zero = result == 0;
     cpu.regs.flags.neg = val < 0;
     cpu.regs.flags.half_carry = carry;
@@ -414,7 +414,7 @@ fn inc_addr(cpu: &mut Cpu, val: i8) -> u8 {
 
 fn ld_addr_from_immediate(cpu: &mut Cpu) -> u8 {
     let byte = cpu.pop_prog_counter();
-    *cpu.memory.at_mut(cpu.regs.combined(Register16::HL)) = byte;
+    cpu.memory.write(cpu.regs.combined(Register16::HL), byte);
     12
 }
 
@@ -514,9 +514,9 @@ fn ret(cpu: &mut Cpu, condition: Option<bool>) -> u8 {
     if !condition {
         return cycles;
     }
-    let lsb = cpu.memory.at(cpu.regs.stack_pointer);
+    let lsb = cpu.memory.read(cpu.regs.stack_pointer);
     cpu.regs.stack_pointer += 1;
-    let msb = cpu.memory.at(cpu.regs.stack_pointer);
+    let msb = cpu.memory.read(cpu.regs.stack_pointer);
     cpu.regs.stack_pointer += 1;
     let addr = u16::from_le_bytes([lsb, msb]);
     cpu.regs.prog_counter = addr;
@@ -524,9 +524,9 @@ fn ret(cpu: &mut Cpu, condition: Option<bool>) -> u8 {
 }
 
 fn pop(cpu: &mut Cpu, dest: Register16) -> u8 {
-    let lsb = cpu.memory.at(cpu.regs.stack_pointer);
+    let lsb = cpu.memory.read(cpu.regs.stack_pointer);
     cpu.regs.stack_pointer += 1;
-    let msb = cpu.memory.at(cpu.regs.stack_pointer);
+    let msb = cpu.memory.read(cpu.regs.stack_pointer);
     cpu.regs.stack_pointer += 1;
     cpu.regs.set_combined(dest, u16::from_le_bytes([lsb, msb]));
     12
@@ -550,9 +550,15 @@ fn call(cpu: &mut Cpu, condition: bool) -> u8 {
         return 12;
     }
     cpu.regs.stack_pointer -= 1;
-    *cpu.memory.at_mut(cpu.regs.stack_pointer) = cpu.regs.prog_counter.to_be_bytes()[0];
+    cpu.memory.write(
+        cpu.regs.stack_pointer,
+        cpu.regs.prog_counter.to_be_bytes()[0],
+    );
     cpu.regs.stack_pointer -= 1;
-    *cpu.memory.at_mut(cpu.regs.stack_pointer) = cpu.regs.prog_counter.to_be_bytes()[1];
+    cpu.memory.write(
+        cpu.regs.stack_pointer,
+        cpu.regs.prog_counter.to_be_bytes()[1],
+    );
     cpu.regs.prog_counter = u16::from_le_bytes([lsb, msb]);
     24
 }
@@ -560,9 +566,9 @@ fn call(cpu: &mut Cpu, condition: bool) -> u8 {
 fn push(cpu: &mut Cpu, src: Register16) -> u8 {
     let bytes = cpu.regs.combined(src).to_be_bytes();
     cpu.regs.stack_pointer -= 1;
-    *cpu.memory.at_mut(cpu.regs.stack_pointer) = bytes[0];
+    cpu.memory.write(cpu.regs.stack_pointer, bytes[0]);
     cpu.regs.stack_pointer -= 1;
-    *cpu.memory.at_mut(cpu.regs.stack_pointer) = bytes[1];
+    cpu.memory.write(cpu.regs.stack_pointer, bytes[1]);
     16
 }
 
@@ -585,9 +591,15 @@ fn add_immediate(cpu: &mut Cpu, sign: Sign, use_carry: bool) -> u8 {
 
 fn rst(cpu: &mut Cpu, lsb: u8) -> u8 {
     cpu.regs.stack_pointer -= 1;
-    *cpu.memory.at_mut(cpu.regs.stack_pointer) = cpu.regs.prog_counter.to_be_bytes()[0];
+    cpu.memory.write(
+        cpu.regs.stack_pointer,
+        cpu.regs.prog_counter.to_be_bytes()[0],
+    );
     cpu.regs.stack_pointer -= 1;
-    *cpu.memory.at_mut(cpu.regs.stack_pointer) = cpu.regs.prog_counter.to_be_bytes()[1];
+    cpu.memory.write(
+        cpu.regs.stack_pointer,
+        cpu.regs.prog_counter.to_be_bytes()[1],
+    );
     cpu.regs.prog_counter = u16::from_le_bytes([lsb, 0x00]);
     16
 }
