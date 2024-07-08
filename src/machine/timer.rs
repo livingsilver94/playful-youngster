@@ -1,4 +1,4 @@
-use crate::machine::memory::RegisterReadWrite;
+use crate::machine::memory::RegisterMapping;
 
 use super::memory::Interruptible;
 
@@ -53,7 +53,7 @@ impl Timer {
     }
 }
 
-impl RegisterReadWrite for Timer {
+impl RegisterMapping for Timer {
     fn read_register(&self, idx: usize) -> u8 {
         match idx {
             0 => (self.divider >> 8) as u8,

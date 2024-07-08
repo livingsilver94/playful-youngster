@@ -23,10 +23,10 @@ impl<'a> Mmu<'a> {
 
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
-            VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.read_video_ram(addr),
+            VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.read_vram(addr),
             WORK_RAM_START..=WORK_RAM_END => self.work_ram[(addr - WORK_RAM_START) as usize],
             ECHO_RAM_START..=ECHO_RAM_END => self.echo_ram[(addr - ECHO_RAM_START) as usize],
-            OAM_RAM_START..=OAM_RAM_END => self.gpu.read_oam_ram(addr),
+            OAM_RAM_START..=OAM_RAM_END => self.gpu.read_oam(addr),
 
             MAPPED_KEYPAD_START..=MAPPED_KEYPAD_END => self
                 .keypad
@@ -58,7 +58,7 @@ impl<'a> Mmu<'a> {
     }
 }
 
-pub trait RegisterReadWrite {
+pub trait RegisterMapping {
     fn read_register(&self, idx: usize) -> u8;
 
     fn write_register(&mut self, idx: usize, val: u8);
