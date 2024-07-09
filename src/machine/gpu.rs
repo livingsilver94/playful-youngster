@@ -1,12 +1,13 @@
-mod lcd_control;
 mod oam;
+mod registers;
 
 use crate::machine::memory::RegisterMapping;
-use lcd_control::LcdControl;
 use oam::ObjAttr;
+use registers::{LcdControl, LcdStatus};
 
 pub struct Gpu {
     lcd_control: LcdControl,
+    lcd_status: LcdStatus,
 
     /// Video random-access memory.
     vram: [u8; VRAM_SIZE],
@@ -18,6 +19,8 @@ impl Gpu {
     pub fn new_gb() -> Self {
         Self {
             lcd_control: Default::default(),
+            lcd_status: Default::default(),
+
             vram: [0; VRAM_SIZE],
             oam: [Default::default(); OAM_SIZE / ATTR_SIZE],
         }
@@ -46,6 +49,7 @@ impl RegisterMapping for Gpu {
     fn read_register(&self, idx: usize) -> u8 {
         match idx {
             0 => self.lcd_control.into(),
+            4 => self.lcd_status.into(),
             _ => todo!(),
         }
     }
@@ -53,6 +57,7 @@ impl RegisterMapping for Gpu {
     fn write_register(&mut self, idx: usize, val: u8) {
         match idx {
             0 => self.lcd_control = val.into(),
+            4 => self.lcd_status = val.into(),
             _ => todo!(),
         }
     }
@@ -100,6 +105,26 @@ impl AddressingMode {
             AddressingMode::Signed => (0x1000, -1),
         };
         base + (sign * (addr as isize)) as usize
+    }
+}
+
+pub enum PpuMode {
+    Mode0,
+    Mode1,
+    Mode2,
+    Mode3,
+}
+
+impl From<u8> for PpuMode {
+    fn from(value: u8) -> Self {
+        let value = value & 0x3;
+        match value {
+            x if x == Self::Mode0 as u8 => Self::Mode0,
+            x if x == Self::Mode1 as u8 => Self::Mode1,
+            x if x == Self::Mode2 as u8 => Self::Mode2,
+            x if x == Self::Mode3 as u8 => Self::Mode3,
+            _ => unreachable!(),
+        }
     }
 }
 
