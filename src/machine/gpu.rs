@@ -3,11 +3,12 @@ mod registers;
 
 use crate::machine::memory::RegisterMapping;
 use oam::ObjAttr;
-use registers::{LcdControl, LcdStatus};
+use registers::{LcdControl, LcdStatus, Palettes};
 
 pub struct Gpu {
     lcd_control: LcdControl,
     lcd_status: LcdStatus,
+    palettes: Palettes,
     background_y: u8,
     background_x: u8,
     window_y: u8,
@@ -24,6 +25,7 @@ impl Gpu {
         Self {
             lcd_control: Default::default(),
             lcd_status: Default::default(),
+            palettes: Default::default(),
             background_y: 0,
             background_x: 0,
             window_y: 0,
@@ -67,6 +69,7 @@ impl RegisterMapping for Gpu {
             0x2 => self.background_y,
             0x3 => self.background_x,
             0x4 => self.lcd_status.into(),
+            0x7 => self.palettes.into(),
             0xA => self.window_y,
             0xB => self.window_x,
             _ => todo!(),
@@ -79,6 +82,7 @@ impl RegisterMapping for Gpu {
             0x2 => self.background_y = val,
             0x3 => self.background_x = val,
             0x4 => self.lcd_status = val.into(),
+            0x7 => self.palettes = val.into(),
             0xA => self.window_y = val,
             0xB => self.window_x = val,
             _ => todo!(),
@@ -146,6 +150,27 @@ impl From<u8> for PpuMode {
             x if x == Self::Mode1 as u8 => Self::Mode1,
             x if x == Self::Mode2 as u8 => Self::Mode2,
             x if x == Self::Mode3 as u8 => Self::Mode3,
+            _ => unreachable!(),
+        }
+    }
+}
+
+enum Color {
+    /// The white color, or transparent in the case of objects.
+    White = 0,
+    LightGray = 1,
+    DarkGray = 2,
+    Black = 3,
+}
+
+impl From<u8> for Color {
+    fn from(value: u8) -> Self {
+        let value = value & 0x3;
+        match value {
+            x if x == Self::White as u8 => Self::White,
+            x if x == Self::LightGray as u8 => Self::LightGray,
+            x if x == Self::DarkGray as u8 => Self::DarkGray,
+            x if x == Self::Black as u8 => Self::Black,
             _ => unreachable!(),
         }
     }
