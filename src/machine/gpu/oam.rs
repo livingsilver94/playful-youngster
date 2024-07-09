@@ -2,7 +2,7 @@ use std::ops;
 
 use bitmaps::Bitmap;
 
-use super::gpu::Palette;
+use super::Palette;
 
 /// Attributes of a sprite, which is either an 8x8 or 8x16 tile.
 #[derive(Clone, Copy, Default)]
@@ -79,7 +79,7 @@ impl ObjFlags {
 
 impl AsRef<u8> for ObjFlags {
     fn as_ref(&self) -> &u8 {
-        &self.0.as_ref()[0]
+        self.0.as_value()
     }
 }
 

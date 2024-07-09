@@ -1,5 +1,8 @@
-use super::oam::ObjAttr;
-use super::vram::{AddressingMode, Vram};
+mod oam;
+mod vram;
+
+use oam::ObjAttr;
+use vram::{AddressingMode, Vram};
 use crate::machine::memory::RegisterMapping;
 
 pub struct Gpu {
@@ -44,6 +47,7 @@ impl Gpu {
 impl RegisterMapping for Gpu {
     fn read_register(&self, idx: usize) -> u8 {
         match idx {
+            // LCDC: LCD control.
             0 => {
                 todo!()
             }
@@ -53,6 +57,7 @@ impl RegisterMapping for Gpu {
 
     fn write_register(&mut self, idx: usize, val: u8) {
         match idx {
+            // LCDC: LCD control.
             0 => {
                 self.enabled = val & 0b1000000 != 0;
                 self.window_enabled = val & 0b0010000 != 0;

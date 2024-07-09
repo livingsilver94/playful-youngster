@@ -1,4 +1,4 @@
-use crate::machine::graphics::gpu::Gpu;
+use crate::machine::gpu::Gpu;
 use crate::machine::keypad::Keypad;
 use crate::machine::timer::Timer;
 

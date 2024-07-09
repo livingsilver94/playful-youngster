@@ -1,12 +1,12 @@
 mod apu;
 mod cpu;
-mod graphics;
+mod gpu;
 mod keypad;
 mod memory;
 mod timer;
 
 use cpu::Cpu;
-use graphics::gpu::Gpu;
+use gpu::Gpu;
 use keypad::Keypad;
 use memory::Mmu;
 use timer::Timer;
