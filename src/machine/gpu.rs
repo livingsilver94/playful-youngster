@@ -8,6 +8,8 @@ use registers::{LcdControl, LcdStatus};
 pub struct Gpu {
     lcd_control: LcdControl,
     lcd_status: LcdStatus,
+    background_y: u8,
+    background_x: u8,
 
     /// Video random-access memory.
     vram: [u8; VRAM_SIZE],
@@ -20,6 +22,8 @@ impl Gpu {
         Self {
             lcd_control: Default::default(),
             lcd_status: Default::default(),
+            background_y: 0,
+            background_x: 0,
 
             vram: [0; VRAM_SIZE],
             oam: [Default::default(); OAM_SIZE / ATTR_SIZE],
@@ -43,21 +47,32 @@ impl Gpu {
         let mut attr = self.oam[addr as usize / ATTR_SIZE];
         attr[addr as usize % ATTR_SIZE] = val;
     }
+
+    fn real_background_coords(&self) -> (u16, u16) {
+        (
+            (self.background_y as u16 + 143) % 256,
+            (self.background_x as u16 + 159) % 256,
+        )
+    }
 }
 
 impl RegisterMapping for Gpu {
     fn read_register(&self, idx: usize) -> u8 {
         match idx {
-            0 => self.lcd_control.into(),
-            4 => self.lcd_status.into(),
+            0x0 => self.lcd_control.into(),
+            0x4 => self.lcd_status.into(),
+            0xA => self.background_y,
+            0xB => self.background_x,
             _ => todo!(),
         }
     }
 
     fn write_register(&mut self, idx: usize, val: u8) {
         match idx {
-            0 => self.lcd_control = val.into(),
-            4 => self.lcd_status = val.into(),
+            0x0 => self.lcd_control = val.into(),
+            0x4 => self.lcd_status = val.into(),
+            0xA => self.background_y = val,
+            0xB => self.background_x = val,
             _ => todo!(),
         }
     }
