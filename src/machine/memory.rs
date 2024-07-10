@@ -41,6 +41,10 @@ impl<'a> Mmu<'a> {
     }
 
     pub fn write(&mut self, addr: u16, val: u8) {
+        match addr {
+            MAPPED_DMA => self.dma_write(val),
+            _ => todo!(),
+        }
         todo!()
     }
 
@@ -55,6 +59,16 @@ impl<'a> Mmu<'a> {
             }
         }
         byte
+    }
+
+    // TODO: return 160 clock ticks.
+    fn dma_write(&mut self, addr: u8) {
+        // DMA copies 0xA0 bytes starting from address addr, but multiplied by 256.
+        let read_base = (addr as u16) << 8;
+        const WRITE_BASE: u16 = 0xFE00;
+        for i in 0..0xA0 {
+            self.write(WRITE_BASE + i, self.read(read_base + i))
+        }
     }
 }
 
@@ -85,6 +99,7 @@ const MAPPED_KEYPAD_END: u16 = 0xFF00;
 
 const MAPPED_TIMER_START: u16 = 0xFF04;
 const MAPPED_TIMER_END: u16 = 0xFF07;
+const MAPPED_DMA: u16 = 0xFF46;
 
 const INTERRUPTS_START: u16 = 0xFFFF;
 const INTERRUPTS_END: u16 = 0xFFFF;
