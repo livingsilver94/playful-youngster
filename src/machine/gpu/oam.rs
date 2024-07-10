@@ -2,8 +2,6 @@ use std::ops;
 
 use bitmaps::Bitmap;
 
-use super::Palette;
-
 /// Attributes of a sprite, which is either an 8x8 or 8x16 tile.
 #[derive(Clone, Copy, Default)]
 pub struct ObjAttr {
@@ -68,11 +66,11 @@ impl ObjFlags {
         self.0.get(5)
     }
 
-    fn palette(&self) -> Palette {
+    fn palette(&self) -> ObjPalette {
         if self.0.get(4) {
-            Palette::Obp1
+            ObjPalette::Obp1
         } else {
-            Palette::Obp0
+            ObjPalette::Obp0
         }
     }
 }
@@ -93,4 +91,9 @@ impl From<ObjFlags> for u8 {
     fn from(value: ObjFlags) -> Self {
         *value.0.as_value()
     }
+}
+
+pub enum ObjPalette {
+    Obp0,
+    Obp1,
 }

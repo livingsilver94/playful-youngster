@@ -106,9 +106,9 @@ impl From<u8> for LcdStatus {
 }
 
 #[derive(Clone, Copy, Default)]
-pub struct Palettes(Bitmap<8>);
+pub struct Palette(Bitmap<8>);
 
-impl Palettes {
+impl Palette {
     fn id3(&self) -> Color {
         Color::from(((self.0.get(7) as u8) << 1) & self.0.get(6) as u8)
     }
@@ -126,13 +126,13 @@ impl Palettes {
     }
 }
 
-impl From<Palettes> for u8 {
-    fn from(value: Palettes) -> Self {
+impl From<Palette> for u8 {
+    fn from(value: Palette) -> Self {
         value.0.into_value()
     }
 }
 
-impl From<u8> for Palettes {
+impl From<u8> for Palette {
     fn from(value: u8) -> Self {
         Self(Bitmap::from_value(value))
     }

@@ -3,12 +3,14 @@ mod registers;
 
 use crate::machine::memory::RegisterMapping;
 use oam::ObjAttr;
-use registers::{LcdControl, LcdStatus, Palettes};
+use registers::{LcdControl, LcdStatus, Palette};
 
 pub struct Gpu {
     lcd_control: LcdControl,
     lcd_status: LcdStatus,
-    palettes: Palettes,
+    background_palette: Palette,
+    object_palette0: Palette,
+    object_palette1: Palette,
     background_y: u8,
     background_x: u8,
     window_y: u8,
@@ -25,7 +27,9 @@ impl Gpu {
         Self {
             lcd_control: Default::default(),
             lcd_status: Default::default(),
-            palettes: Default::default(),
+            background_palette: Default::default(),
+            object_palette0: Default::default(),
+            object_palette1: Default::default(),
             background_y: 0,
             background_x: 0,
             window_y: 0,
@@ -69,7 +73,9 @@ impl RegisterMapping for Gpu {
             0x2 => self.background_y,
             0x3 => self.background_x,
             0x4 => self.lcd_status.into(),
-            0x7 => self.palettes.into(),
+            0x7 => self.background_palette.into(),
+            0x8 => self.object_palette0.into(),
+            0x9 => self.object_palette1.into(),
             0xA => self.window_y,
             0xB => self.window_x,
             _ => todo!(),
@@ -82,17 +88,14 @@ impl RegisterMapping for Gpu {
             0x2 => self.background_y = val,
             0x3 => self.background_x = val,
             0x4 => self.lcd_status = val.into(),
-            0x7 => self.palettes = val.into(),
+            0x7 => self.background_palette = val.into(),
+            0x8 => self.object_palette0 = val.into(),
+            0x9 => self.object_palette1 = val.into(),
             0xA => self.window_y = val,
             0xB => self.window_x = val,
             _ => todo!(),
         }
     }
-}
-
-enum Palette {
-    Obp0,
-    Obp1,
 }
 
 #[repr(u16)]
