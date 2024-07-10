@@ -20,6 +20,8 @@ pub struct Gpu {
     vram: [u8; VRAM_SIZE],
     /// Object attribute memory, where sprite attributes are stored.
     oam: [ObjAttr; OAM_SIZE / ATTR_SIZE],
+
+    current_mode: PpuMode,
 }
 
 impl Gpu {
@@ -37,23 +39,41 @@ impl Gpu {
 
             vram: [0; VRAM_SIZE],
             oam: [Default::default(); OAM_SIZE / ATTR_SIZE],
+
+            current_mode: PpuMode::Mode0,
         }
     }
 
     pub fn read_vram(&self, addr: u16) -> u8 {
+        if self.current_mode > PpuMode::Mode2 {
+            // VRAM is inaccessible in Mode3. Any read attempt receives garbage values.
+            return 0xFF;
+        }
         self.vram[self.lcd_control.addressing_mode().compute_address(addr)]
     }
 
     pub fn write_vram(&mut self, addr: u16, val: u8) {
+        if self.current_mode > PpuMode::Mode2 {
+            // VRAM is inaccessible in Mode3. Any write attempt is noop.
+            return;
+        }
         self.vram[self.lcd_control.addressing_mode().compute_address(addr)] = val;
     }
 
     pub fn read_oam(&self, addr: u16) -> u8 {
+        if self.current_mode > PpuMode::Mode1 {
+            // OAM is inaccessible after Mode1. Any read attempt receives garbage values.
+            return 0xFF;
+        }
         let attr = self.oam[addr as usize / ATTR_SIZE];
         attr[addr as usize % ATTR_SIZE]
     }
 
     pub fn write_oam(&mut self, addr: u16, val: u8) {
+        if self.current_mode > PpuMode::Mode1 {
+            // OAM is inaccessible after Mode1. Any write attempt is noop.
+            return;
+        }
         let mut attr = self.oam[addr as usize / ATTR_SIZE];
         attr[addr as usize % ATTR_SIZE] = val;
     }
@@ -84,7 +104,12 @@ impl RegisterMapping for Gpu {
 
     fn write_register(&mut self, idx: usize, val: u8) {
         match idx {
-            0x0 => self.lcd_control = val.into(),
+            0x0 => {
+                self.lcd_control = val.into();
+                if !self.lcd_control.enabled() {
+                    self.current_mode = PpuMode::Mode0;
+                }
+            }
             0x2 => self.background_y = val,
             0x3 => self.background_x = val,
             0x4 => self.lcd_status = val.into(),
@@ -138,10 +163,15 @@ impl AddressingMode {
     }
 }
 
+#[derive(PartialEq, PartialOrd)]
 pub enum PpuMode {
+    /// HBlank Period.
     Mode0,
+    /// VBlank Period.
     Mode1,
+    /// Searching OAM Period.
     Mode2,
+    /// Drawing pixels period.
     Mode3,
 }
 
