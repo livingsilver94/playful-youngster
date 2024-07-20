@@ -1,5 +1,6 @@
 mod mbc0;
 mod mbc1;
+mod mbc2;
 
 use std::io::{self, Read, Seek};
 
@@ -9,6 +10,7 @@ use crate::machine::cartridge::Hardware;
 pub enum Mbc {
     Mbc0,
     Mbc1, // NOTE: this does not emulate MBC1M.
+    Mbc2,
 }
 
 impl Mbc {
@@ -16,6 +18,7 @@ impl Mbc {
         match typ {
             0x00 | 0x08..=0x09 => Self::Mbc0,
             0x01..=0x03 => Self::Mbc1,
+            0x05..=0x06 => Self::Mbc2,
             _ => todo!(),
         }
     }
@@ -24,6 +27,7 @@ impl Mbc {
         match self {
             Self::Mbc0 => mbc0::read(hw, addr),
             Self::Mbc1 => mbc1::read(hw, addr),
+            Self::Mbc2 => mbc2::read(hw, addr),
         }
     }
 
@@ -31,6 +35,7 @@ impl Mbc {
         match self {
             Self::Mbc0 => (),
             Self::Mbc1 => mbc1::write(hw, addr, val),
+            Self::Mbc2 => mbc2::write(hw, addr, val),
         }
     }
 }
