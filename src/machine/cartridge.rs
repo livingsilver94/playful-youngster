@@ -135,6 +135,7 @@ struct Hardware<R: Read + Seek> {
     /// in a file.
     has_battery: bool,
     banking_mode: BankingMode,
+    rtc: Rtc,
 }
 
 impl<R: Read + Seek> Hardware<R> {
@@ -173,6 +174,7 @@ impl<R: Read + Seek> Hardware<R> {
             ram: Ram::new(ram_banks),
             has_battery,
             banking_mode: BankingMode::Rom,
+            rtc: Rtc::new(),
         }
     }
 }
@@ -196,6 +198,71 @@ impl TryFrom<u8> for BankingMode {
             1 => Ok(BankingMode::Ram),
             _ => Err(format!("unsupported bank addressing value: {}", value)),
         }
+    }
+}
+
+struct Rtc {
+    latched: bool,
+    registers: RtcRegisters,
+}
+
+impl Rtc {
+    fn new() -> Self {
+        Self {
+            latched: false,
+            registers: Default::default(),
+        }
+    }
+
+    /// Sets whether the RTC value is latched to a certain register.
+    /// The RTC value is only latched when it is first "unlatched",
+    /// i.e. it is required to call [`Self::set_latched`] passing
+    /// `false` and then again passing `true`.
+    fn set_latched(&mut self, latched: bool) {
+        if !self.latched && latched {
+            todo!("Save latched value");
+        }
+        self.latched = latched;
+    }
+}
+
+#[derive(Default)]
+struct RtcRegisters {
+    seconds: u8,
+    minutes: u8,
+    hours: u8,
+    /// Lower bits of the day counter.
+    /// The most significant bit is contained in [`Self::bools`].
+    days_lower: u8,
+    bools: RtcBoolRegisters,
+}
+
+#[derive(Default)]
+struct RtcBoolRegisters(bitmaps::Bitmap<8>);
+
+impl RtcBoolRegisters {
+    fn days_upper(&self) -> bool {
+        self.0.get(0)
+    }
+
+    fn enabled(&self) -> bool {
+        self.0.get(6)
+    }
+
+    fn days_overflowed(&self) -> bool {
+        self.0.get(7)
+    }
+
+    fn set_days_upper(&mut self, val: bool) {
+        self.0.set(0, val);
+    }
+
+    fn set_enabled(&mut self, val: bool) {
+        self.0.set(6, val);
+    }
+
+    fn set_days_overflowed(&mut self, val: bool) {
+        self.0.set(7, val);
     }
 }
 
