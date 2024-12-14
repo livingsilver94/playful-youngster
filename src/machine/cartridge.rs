@@ -1,3 +1,4 @@
+mod header;
 mod mbc;
 
 use std::io::{self, Read, Seek, SeekFrom};
@@ -6,21 +7,26 @@ use mbc::Mbc;
 
 pub struct Cartridge<R: Read + Seek> {
     hw: Hardware<R>,
+    /// Whether or not the cartridge sports a battery.
+    /// The battery is used to retain values in RAM and/or
+    /// power the embedded RTC. As far as the emulation is concerned,
+    /// having a battery means having to store the cartridge state
+    /// in a file.
+    has_battery: bool,
+
     mbc: Mbc,
 }
 
 impl<R: Read + Seek> Cartridge<R> {
-    pub fn new(mut data: R) -> io::Result<Self> {
-        const TYPE: u16 = 0x147;
-        const ROM_SIZE: u16 = 0x148;
-        const RAM_SIZE: u16 = 0x149;
-
-        let typ = read_at(&mut data, TYPE)?;
-        let rom_size = read_at(&mut data, ROM_SIZE)?;
-        let ram_size = read_at(&mut data, RAM_SIZE)?;
+    /// Builds a cartridge hardware emulator according to a header contained in the cartridge itself.
+    pub fn new_from_header(mut data: R) -> io::Result<Self> {
+        let cartridge_type = header::cartridge_type(&mut data)?;
+        let rom_banks = header::rom_banks(&mut data)?;
+        let ram_banks = header::ram_banks(&mut data, cartridge_type)?;
         Ok(Self {
-            hw: Hardware::from_cardridge_header(data, typ, rom_size, ram_size),
-            mbc: Mbc::new(typ),
+            hw: Hardware::new(data, rom_banks, ram_banks),
+            has_battery: cartridge_type.has_battery(),
+            mbc: cartridge_type.mbc(),
         })
     }
 }
@@ -126,53 +132,17 @@ impl Ram {
 }
 
 struct Hardware<R: Read + Seek> {
-    rom: Rom<R>,
-    ram: Ram,
-    /// Whether or not the cartridge sports a battery.
-    /// The battery is used to retain values in RAM and/or
-    /// power the embedded RTC. As far as the emulation is concerned,
-    /// having a battery means having to store the cartridge state
-    /// in a file.
-    has_battery: bool,
-    banking_mode: BankingMode,
-    rtc: Rtc,
+    pub rom: Rom<R>,
+    pub ram: Ram,
+    pub banking_mode: BankingMode,
+    pub rtc: Rtc,
 }
 
 impl<R: Read + Seek> Hardware<R> {
-    fn from_cardridge_header(data: R, typ: u8, rom_size: u8, ram_size: u8) -> Self {
-        let rom_banks = match rom_size {
-            0x00..=0x08 => (1 << rom_size) + 1,
-            0x52 => 72,
-            0x53 => 80,
-            0x54 => 96,
-            _ => unreachable!(),
-        };
-        let ram_banks = match ram_size {
-            0x00 => {
-                // MBC2 has 512 half-bytes or RAM, but it's internal, so ram_banks
-                // is technically zero. We don't emulate the hardware layout precisely,
-                // so we pretend it has 1 bank of regular RAM.
-                if (0x05..=0x06).contains(&typ) {
-                    1
-                } else {
-                    0
-                }
-            }
-            0x02 => 1,
-            0x03 => 4,
-            0x04 => 16,
-            0x05 => 8,
-            _ => unreachable!(),
-        };
-        let has_battery = match typ {
-            0x3 => true,
-            _ => false,
-        };
-
+    fn new(data: R, rom_banks: u8, ram_banks: u8) -> Self {
         Self {
             rom: Rom::new(data, rom_banks),
             ram: Ram::new(ram_banks),
-            has_battery,
             banking_mode: BankingMode::Rom,
             rtc: Rtc::new(),
         }

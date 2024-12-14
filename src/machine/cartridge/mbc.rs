@@ -16,31 +16,21 @@ pub enum Mbc {
 }
 
 impl Mbc {
-    pub fn new(typ: u8) -> Self {
-        match typ {
-            0x00 | 0x08..=0x09 => Self::Mbc0,
-            0x01..=0x03 => Self::Mbc1,
-            0x05..=0x06 => Self::Mbc2,
-            0x0F..=0x13 => Self::Mbc3(Default::default()),
-            _ => todo!(),
-        }
-    }
-
-    pub fn read<R: Read + Seek>(&self, hw: &mut super::Hardware<R>, addr: u16) -> io::Result<u8> {
+    pub fn read<R: Read + Seek>(&self, mem: &mut Hardware<R>, addr: u16) -> io::Result<u8> {
         match self {
-            Self::Mbc0 => mbc0::read(hw, addr),
-            Self::Mbc1 => mbc1::read(hw, addr),
-            Self::Mbc2 => mbc2::read(hw, addr),
-            Self::Mbc3(status) => mbc3::read(*status, hw, addr),
+            Self::Mbc0 => mbc0::read(mem, addr),
+            Self::Mbc1 => mbc1::read(mem, addr),
+            Self::Mbc2 => mbc2::read(mem, addr),
+            Self::Mbc3(status) => mbc3::read(*status, mem, addr),
         }
     }
 
-    pub fn write<R: Read + Seek>(&mut self, hw: &mut Hardware<R>, addr: u16, val: u8) {
+    pub fn write<R: Read + Seek>(&mut self, mem: &mut Hardware<R>, addr: u16, val: u8) {
         match self {
             Self::Mbc0 => (),
-            Self::Mbc1 => mbc1::write(hw, addr, val),
-            Self::Mbc2 => mbc2::write(hw, addr, val),
-            Self::Mbc3(status) => mbc3::write(status, hw, addr, val),
+            Self::Mbc1 => mbc1::write(mem, addr, val),
+            Self::Mbc2 => mbc2::write(mem, addr, val),
+            Self::Mbc3(status) => mbc3::write(status, mem, addr, val),
         }
     }
 }
