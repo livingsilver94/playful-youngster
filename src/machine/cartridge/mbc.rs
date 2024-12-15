@@ -12,7 +12,7 @@ pub enum Mbc {
     Mbc0,
     Mbc1, // NOTE: this does not emulate MBC1M.
     Mbc2,
-    Mbc3(mbc3::Status),
+    Mbc3,
 }
 
 impl Mbc {
@@ -21,7 +21,7 @@ impl Mbc {
             Self::Mbc0 => mbc0::read(mem, addr),
             Self::Mbc1 => mbc1::read(mem, addr),
             Self::Mbc2 => mbc2::read(mem, addr),
-            Self::Mbc3(status) => mbc3::read(*status, mem, addr),
+            Self::Mbc3 => mbc3::read(mem, addr),
         }
     }
 
@@ -30,7 +30,7 @@ impl Mbc {
             Self::Mbc0 => (),
             Self::Mbc1 => mbc1::write(mem, addr, val),
             Self::Mbc2 => mbc2::write(mem, addr, val),
-            Self::Mbc3(status) => mbc3::write(status, mem, addr, val),
+            Self::Mbc3 => mbc3::write(mem, addr, val),
         }
     }
 }

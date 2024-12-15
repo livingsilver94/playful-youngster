@@ -5,6 +5,8 @@ use std::io::{self, Read, Seek, SeekFrom};
 
 use mbc::Mbc;
 
+use crate::machine::memory::RegisterMapping;
+
 pub struct Cartridge<R: Read + Seek> {
     hw: Hardware<R>,
     /// Whether or not the cartridge sports a battery.
@@ -64,8 +66,7 @@ impl<R: Read + Seek> Rom<R> {
     }
 
     fn set_bank(&mut self, bank: u8) {
-        let mut bank = bank & 0b00011111; // The bank is addressed by 5 bits.
-        bank = if bank == 0 { 1 } else { bank };
+        let mut bank = if bank == 0 { 1 } else { bank };
         // If bank number is too high, it is masked by the amount of bits
         // required to represent the bank count.
         bank &= (1 << self.banks.ilog2() as u8) - 1;
@@ -126,7 +127,7 @@ impl Ram {
         self.write(self.curr_bank as u16 * Self::BANK_SIZE + addr, val)
     }
 
-    fn set_bank(&mut self, bank: u8) {
+    fn set_current_bank(&mut self, bank: u8) {
         self.curr_bank = bank & 0b00000011;
     }
 }
@@ -134,8 +135,8 @@ impl Ram {
 struct Hardware<R: Read + Seek> {
     pub rom: Rom<R>,
     pub ram: Ram,
-    pub banking_mode: BankingMode,
     pub rtc: Rtc,
+    pub banking_mode: BankingMode,
 }
 
 impl<R: Read + Seek> Hardware<R> {
@@ -143,45 +144,57 @@ impl<R: Read + Seek> Hardware<R> {
         Self {
             rom: Rom::new(data, rom_banks),
             ram: Ram::new(ram_banks),
-            banking_mode: BankingMode::Rom,
             rtc: Rtc::new(),
+            banking_mode: BankingMode::Rom,
         }
     }
 }
 
-/// Determines whether certain areas of a cartridge
-/// are mapped to a ROM bank or to a RAM bank.
+/// Determines whether certain address of a cartridge
+/// are mapped to a particular piece of hardware.
 #[derive(PartialEq, Eq)]
 enum BankingMode {
     /// Maps flexible areas of a cartridge to a ROM bank.
-    Rom = 0,
+    Rom,
     /// Maps flexible areas of a cartridge to a RAM bank.
-    Ram = 1,
-}
-
-impl TryFrom<u8> for BankingMode {
-    type Error = String;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(BankingMode::Rom),
-            1 => Ok(BankingMode::Ram),
-            _ => Err(format!("unsupported bank addressing value: {}", value)),
-        }
-    }
+    Ram,
+    /// Maps flexible areas of a cartridge to RTC registers.
+    Rtc,
 }
 
 struct Rtc {
-    latched: bool,
     registers: RtcRegisters,
+    curr_register: u8,
+    latched: bool,
+    enabled: bool,
 }
 
 impl Rtc {
     fn new() -> Self {
         Self {
-            latched: false,
             registers: Default::default(),
+            curr_register: 0,
+            latched: false,
+            enabled: true,
         }
+    }
+
+    fn read_current_register(&self) -> u8 {
+        if !self.enabled {
+            return 0xFF;
+        }
+        self.read_register(self.curr_register.into())
+    }
+
+    fn write_current_register(&mut self, val: u8) {
+        if !self.enabled {
+            return;
+        }
+        self.write_register(self.curr_register.into(), val)
+    }
+
+    fn set_current_register(&mut self, reg: u8) {
+        self.curr_register = reg;
     }
 
     /// Sets whether the RTC value is latched to a certain register.
@@ -193,6 +206,30 @@ impl Rtc {
             todo!("Save latched value");
         }
         self.latched = latched;
+    }
+}
+
+impl RegisterMapping for Rtc {
+    fn read_register(&self, idx: usize) -> u8 {
+        match idx {
+            0 => self.registers.seconds,
+            1 => self.registers.minutes,
+            2 => self.registers.hours,
+            3 => self.registers.days_lower,
+            4 => self.registers.bools.0.into_value(),
+            _ => unreachable!(),
+        }
+    }
+
+    fn write_register(&mut self, idx: usize, val: u8) {
+        match idx {
+            0 => self.registers.seconds = val,
+            1 => self.registers.minutes = val,
+            2 => self.registers.hours = val,
+            3 => self.registers.days_lower = val,
+            4 => self.registers.bools = RtcBoolRegisters(bitmaps::Bitmap::<8>::from_value(val)),
+            _ => unreachable!(),
+        }
     }
 }
 

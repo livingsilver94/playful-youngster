@@ -1,29 +1,42 @@
 use std::io::{self, Read, Seek};
 
-use crate::machine::cartridge::Hardware;
+use crate::machine::cartridge::{BankingMode, Hardware};
 
-pub fn read<R: Read + Seek>(status: Status, hw: &mut Hardware<R>, addr: u16) -> io::Result<u8> {
+pub fn read<R: Read + Seek>(hw: &mut Hardware<R>, addr: u16) -> io::Result<u8> {
     match addr {
         0x0000..=0x3FFF => hw.rom.at(addr),
         0x4000..=0x7FFF => hw.rom.at_current_bank(addr - 0x4000),
+        0xA000..=0xBFFF => match hw.banking_mode {
+            BankingMode::Ram => Ok(hw.ram.read_current_bank(addr - 0xA000)),
+            BankingMode::Rtc => Ok(hw.rtc.read_current_register()),
+            _ => unreachable!(),
+        },
         _ => unreachable!(),
     }
 }
 
-pub fn write<R: Read + Seek>(status: &mut Status, hw: &mut Hardware<R>, addr: u16, val: u8) {
+pub fn write<R: Read + Seek>(hw: &mut Hardware<R>, addr: u16, val: u8) {
     match addr {
+        0x0000..=0x1FFF => {
+            hw.ram.enabled = (val & 0x0F) == 0x0A;
+            hw.rtc.enabled = hw.ram.enabled;
+        }
+        0x2000..=0x3FFF => hw.rom.set_bank(val),
+        0x4000..=0x5FFF => {
+            if (0x08..=0x0C).contains(&val) {
+                hw.banking_mode = BankingMode::Rtc;
+                hw.rtc.set_current_register(val - 0x08);
+            } else {
+                hw.banking_mode = BankingMode::Ram;
+                hw.ram.set_current_bank(val);
+            }
+        }
+        0xA000..=0xBFFF => match hw.banking_mode {
+            BankingMode::Ram => hw.ram.write_current_bank(addr - 0xA000, val),
+            BankingMode::Rtc => hw.rtc.write_current_register(val),
+            _ => unreachable!(),
+        },
+        0x6000..=0x7FFF => hw.rtc.set_latched(val != 0),
         _ => unreachable!(),
     }
-}
-
-#[derive(Clone, Copy, Default)]
-pub struct Status {
-    data_source: SourceSelection,
-}
-
-#[derive(Clone, Copy, Default)]
-pub enum SourceSelection {
-    #[default]
-    Ram,
-    Rtc,
 }

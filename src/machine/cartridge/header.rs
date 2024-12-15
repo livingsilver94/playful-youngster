@@ -18,7 +18,7 @@ impl CartridgeType {
             0x00 | 0x08..=0x09 => Mbc::Mbc0,
             0x01..=0x03 => Mbc::Mbc1,
             0x05..=0x06 => Mbc::Mbc2,
-            0x0F..=0x13 => Mbc::Mbc3(Default::default()),
+            0x0F..=0x13 => Mbc::Mbc3,
             _ => todo!(),
         }
     }
