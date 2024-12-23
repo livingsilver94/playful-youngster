@@ -1,71 +1,71 @@
 use crate::machine::cpu::*;
 
-pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
+pub fn execute(cpu: &mut Cpu, mmu: &mut Mmu, opcode: u8) -> u8 {
     use {Operand::*, Register16::*, Register8::*, Sign::*};
     match opcode {
         0x00 => nop(cpu),
-        0x01 => ld_register16_immediate(cpu, BC),
-        0x02 => ld_addr_from_register8(cpu, BC, A),
+        0x01 => ld_register16_immediate(cpu, mmu, BC),
+        0x02 => ld_addr_from_register8(cpu, mmu, BC, A),
         0x03 => inc_register16(cpu, BC, 1),
         0x04 => inc_register8(cpu, B, 1),
         0x05 => inc_register8(cpu, B, -1),
-        0x06 => ld_register8_immediate(cpu, B),
+        0x06 => ld_register8_immediate(cpu, mmu, B),
         0x07 => rotate_circular_a(cpu, Direction::Left),
-        0x08 => ld_from_stack_pointer_immediate(cpu),
+        0x08 => ld_from_stack_pointer_immediate(cpu, mmu),
         0x09 => add_register16(cpu, HL, BC),
-        0x0A => ld_register8_from_addr(cpu, A, BC),
+        0x0A => ld_register8_from_addr(cpu, mmu, A, BC),
         0x0B => inc_register16(cpu, BC, -1),
         0x0C => inc_register8(cpu, C, 1),
         0x0D => inc_register8(cpu, C, -1),
-        0x0E => ld_register8_immediate(cpu, C),
+        0x0E => ld_register8_immediate(cpu, mmu, C),
         0x0F => rotate_circular_a(cpu, Direction::Right),
-        0x10 => stop(cpu),
-        0x11 => ld_register16_immediate(cpu, DE),
-        0x12 => ld_addr_from_register8(cpu, DE, A),
+        0x10 => stop(cpu, mmu),
+        0x11 => ld_register16_immediate(cpu, mmu, DE),
+        0x12 => ld_addr_from_register8(cpu, mmu, DE, A),
         0x13 => inc_register16(cpu, DE, 1),
         0x14 => inc_register8(cpu, D, 1),
         0x15 => inc_register8(cpu, D, -1),
-        0x16 => ld_register8_immediate(cpu, D),
+        0x16 => ld_register8_immediate(cpu, mmu, D),
         0x17 => rotate_a(cpu, Direction::Left),
-        0x18 => jump_relative(cpu, true),
+        0x18 => jump_relative(cpu, mmu, true),
         0x19 => add_register16(cpu, HL, DE),
-        0x1A => ld_register8_from_addr(cpu, A, DE),
+        0x1A => ld_register8_from_addr(cpu, mmu, A, DE),
         0x1B => inc_register16(cpu, DE, -1),
         0x1C => inc_register8(cpu, E, 1),
         0x1D => inc_register8(cpu, E, -1),
-        0x1E => ld_register8_immediate(cpu, E),
+        0x1E => ld_register8_immediate(cpu, mmu, E),
         0x1F => rotate_a(cpu, Direction::Right),
-        0x20 => jump_relative(cpu, !cpu.regs.flags.zero),
-        0x21 => ld_register16_immediate(cpu, HL),
-        0x22 => ld_addr_from_a_increment(cpu, 1),
+        0x20 => jump_relative(cpu, mmu, !cpu.regs.flags.zero),
+        0x21 => ld_register16_immediate(cpu, mmu, HL),
+        0x22 => ld_addr_from_a_increment(cpu, mmu, 1),
         0x23 => inc_register16(cpu, HL, 1),
         0x24 => inc_register8(cpu, H, 1),
         0x25 => inc_register8(cpu, H, -1),
-        0x26 => ld_register8_immediate(cpu, H),
+        0x26 => ld_register8_immediate(cpu, mmu, H),
         0x27 => daa(cpu),
-        0x28 => jump_relative(cpu, cpu.regs.flags.zero),
+        0x28 => jump_relative(cpu, mmu, cpu.regs.flags.zero),
         0x29 => add_register16(cpu, HL, HL),
-        0x2A => ld_a_from_addr_increment(cpu, 1),
+        0x2A => ld_a_from_addr_increment(cpu, mmu, 1),
         0x2B => inc_register16(cpu, HL, -1),
         0x2C => inc_register8(cpu, L, 1),
         0x2D => inc_register8(cpu, L, -1),
-        0x2E => ld_register8_immediate(cpu, L),
+        0x2E => ld_register8_immediate(cpu, mmu, L),
         0x2F => cpl(cpu),
-        0x30 => jump_relative(cpu, !cpu.regs.flags.carry),
-        0x31 => ld_register16_immediate(cpu, SP),
-        0x32 => ld_addr_from_a_increment(cpu, -1),
+        0x30 => jump_relative(cpu, mmu, !cpu.regs.flags.carry),
+        0x31 => ld_register16_immediate(cpu, mmu, SP),
+        0x32 => ld_addr_from_a_increment(cpu, mmu, -1),
         0x33 => inc_register16(cpu, SP, 1),
-        0x34 => inc_addr(cpu, 1),
-        0x35 => inc_addr(cpu, -1),
-        0x36 => ld_addr_from_immediate(cpu),
+        0x34 => inc_addr(cpu, mmu, 1),
+        0x35 => inc_addr(cpu, mmu, -1),
+        0x36 => ld_addr_from_immediate(cpu, mmu),
         0x37 => scf(cpu),
-        0x38 => jump_relative(cpu, cpu.regs.flags.carry),
+        0x38 => jump_relative(cpu, mmu, cpu.regs.flags.carry),
         0x39 => add_register16(cpu, HL, SP),
-        0x3A => ld_a_from_addr_increment(cpu, -1),
+        0x3A => ld_a_from_addr_increment(cpu, mmu, -1),
         0x3B => inc_register16(cpu, SP, -1),
         0x3C => inc_register8(cpu, A, 1),
         0x3D => inc_register8(cpu, A, -1),
-        0x3E => ld_register8_immediate(cpu, A),
+        0x3E => ld_register8_immediate(cpu, mmu, A),
         0x3F => ccf(cpu),
         0x40 => ld_register8(cpu, B, B),
         0x41 => ld_register8(cpu, B, C),
@@ -73,7 +73,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x43 => ld_register8(cpu, B, E),
         0x44 => ld_register8(cpu, B, H),
         0x45 => ld_register8(cpu, B, L),
-        0x46 => ld_register8_from_addr(cpu, B, HL),
+        0x46 => ld_register8_from_addr(cpu, mmu, B, HL),
         0x47 => ld_register8(cpu, B, A),
         0x48 => ld_register8(cpu, C, B),
         0x49 => ld_register8(cpu, C, C),
@@ -81,7 +81,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x4B => ld_register8(cpu, C, E),
         0x4C => ld_register8(cpu, C, H),
         0x4D => ld_register8(cpu, C, L),
-        0x4E => ld_register8_from_addr(cpu, C, HL),
+        0x4E => ld_register8_from_addr(cpu, mmu, C, HL),
         0x4F => ld_register8(cpu, C, A),
         0x50 => ld_register8(cpu, D, B),
         0x51 => ld_register8(cpu, D, C),
@@ -89,7 +89,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x53 => ld_register8(cpu, D, E),
         0x54 => ld_register8(cpu, D, H),
         0x55 => ld_register8(cpu, D, L),
-        0x56 => ld_register8_from_addr(cpu, D, HL),
+        0x56 => ld_register8_from_addr(cpu, mmu, D, HL),
         0x57 => ld_register8(cpu, D, A),
         0x58 => ld_register8(cpu, E, B),
         0x59 => ld_register8(cpu, E, C),
@@ -97,7 +97,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x5B => ld_register8(cpu, E, E),
         0x5C => ld_register8(cpu, E, H),
         0x5D => ld_register8(cpu, E, L),
-        0x5E => ld_register8_from_addr(cpu, E, HL),
+        0x5E => ld_register8_from_addr(cpu, mmu, E, HL),
         0x5F => ld_register8(cpu, E, A),
         0x60 => ld_register8(cpu, H, B),
         0x61 => ld_register8(cpu, H, C),
@@ -105,7 +105,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x63 => ld_register8(cpu, H, E),
         0x64 => ld_register8(cpu, H, H),
         0x65 => ld_register8(cpu, H, L),
-        0x66 => ld_register8_from_addr(cpu, H, HL),
+        0x66 => ld_register8_from_addr(cpu, mmu, H, HL),
         0x67 => ld_register8(cpu, H, A),
         0x68 => ld_register8(cpu, L, B),
         0x69 => ld_register8(cpu, L, C),
@@ -113,23 +113,23 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x6B => ld_register8(cpu, L, E),
         0x6C => ld_register8(cpu, L, H),
         0x6D => ld_register8(cpu, L, L),
-        0x6E => ld_register8_from_addr(cpu, L, HL),
+        0x6E => ld_register8_from_addr(cpu, mmu, L, HL),
         0x6F => ld_register8(cpu, L, A),
-        0x70 => ld_addr_from_register8(cpu, HL, B),
-        0x71 => ld_addr_from_register8(cpu, HL, C),
-        0x72 => ld_addr_from_register8(cpu, HL, D),
-        0x73 => ld_addr_from_register8(cpu, HL, E),
-        0x74 => ld_addr_from_register8(cpu, HL, H),
-        0x75 => ld_addr_from_register8(cpu, HL, L),
+        0x70 => ld_addr_from_register8(cpu, mmu, HL, B),
+        0x71 => ld_addr_from_register8(cpu, mmu, HL, C),
+        0x72 => ld_addr_from_register8(cpu, mmu, HL, D),
+        0x73 => ld_addr_from_register8(cpu, mmu, HL, E),
+        0x74 => ld_addr_from_register8(cpu, mmu, HL, H),
+        0x75 => ld_addr_from_register8(cpu, mmu, HL, L),
         0x76 => halt(cpu),
-        0x77 => ld_addr_from_register8(cpu, HL, A),
+        0x77 => ld_addr_from_register8(cpu, mmu, HL, A),
         0x78 => ld_register8(cpu, A, B),
         0x79 => ld_register8(cpu, A, C),
         0x7A => ld_register8(cpu, A, D),
         0x7B => ld_register8(cpu, A, E),
         0x7C => ld_register8(cpu, A, H),
         0x7D => ld_register8(cpu, A, L),
-        0x7E => ld_register8_from_addr(cpu, A, HL),
+        0x7E => ld_register8_from_addr(cpu, mmu, A, HL),
         0x7F => ld_register8(cpu, A, A),
         0x80 => add_register8(cpu, Reg(B), Positive, false),
         0x81 => add_register8(cpu, Reg(C), Positive, false),
@@ -137,7 +137,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x83 => add_register8(cpu, Reg(E), Positive, false),
         0x84 => add_register8(cpu, Reg(H), Positive, false),
         0x85 => add_register8(cpu, Reg(L), Positive, false),
-        0x86 => add_register8(cpu, Addr(HL), Positive, false),
+        0x86 => add_register8(cpu, Addr(HL, mmu), Positive, false),
         0x87 => add_register8(cpu, Reg(A), Positive, false),
         0x88 => add_register8(cpu, Reg(B), Positive, true),
         0x89 => add_register8(cpu, Reg(C), Positive, true),
@@ -145,7 +145,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x8B => add_register8(cpu, Reg(E), Positive, true),
         0x8C => add_register8(cpu, Reg(H), Positive, true),
         0x8D => add_register8(cpu, Reg(L), Positive, true),
-        0x8E => add_register8(cpu, Addr(HL), Positive, true),
+        0x8E => add_register8(cpu, Addr(HL, mmu), Positive, true),
         0x8F => add_register8(cpu, Reg(A), Positive, true),
         0x90 => add_register8(cpu, Reg(B), Negative, false),
         0x91 => add_register8(cpu, Reg(C), Negative, false),
@@ -153,7 +153,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x93 => add_register8(cpu, Reg(E), Negative, false),
         0x94 => add_register8(cpu, Reg(H), Negative, false),
         0x95 => add_register8(cpu, Reg(L), Negative, false),
-        0x96 => add_register8(cpu, Addr(HL), Negative, false),
+        0x96 => add_register8(cpu, Addr(HL, mmu), Negative, false),
         0x97 => add_register8(cpu, Reg(A), Negative, false),
         0x98 => add_register8(cpu, Reg(B), Negative, true),
         0x99 => add_register8(cpu, Reg(C), Negative, true),
@@ -161,7 +161,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0x9B => add_register8(cpu, Reg(E), Negative, true),
         0x9C => add_register8(cpu, Reg(H), Negative, true),
         0x9D => add_register8(cpu, Reg(L), Negative, true),
-        0x9E => add_register8(cpu, Addr(HL), Negative, true),
+        0x9E => add_register8(cpu, Addr(HL, mmu), Negative, true),
         0x9F => add_register8(cpu, Reg(A), Negative, true),
         0xA0 => and_register8(cpu, Reg(B)),
         0xA1 => and_register8(cpu, Reg(C)),
@@ -169,7 +169,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0xA3 => and_register8(cpu, Reg(E)),
         0xA4 => and_register8(cpu, Reg(H)),
         0xA5 => and_register8(cpu, Reg(L)),
-        0xA6 => and_register8(cpu, Addr(HL)),
+        0xA6 => and_register8(cpu, Addr(HL, mmu)),
         0xA7 => and_register8(cpu, Reg(A)),
         0xA8 => xor_register8(cpu, Reg(B)),
         0xA9 => xor_register8(cpu, Reg(C)),
@@ -177,7 +177,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0xAB => xor_register8(cpu, Reg(E)),
         0xAC => xor_register8(cpu, Reg(H)),
         0xAD => xor_register8(cpu, Reg(L)),
-        0xAE => xor_register8(cpu, Addr(HL)),
+        0xAE => xor_register8(cpu, Addr(HL, mmu)),
         0xAF => xor_register8(cpu, Reg(A)),
         0xB0 => or_register8(cpu, Reg(B)),
         0xB1 => or_register8(cpu, Reg(C)),
@@ -185,7 +185,7 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0xB3 => or_register8(cpu, Reg(E)),
         0xB4 => or_register8(cpu, Reg(H)),
         0xB5 => or_register8(cpu, Reg(L)),
-        0xB6 => or_register8(cpu, Addr(HL)),
+        0xB6 => or_register8(cpu, Addr(HL, mmu)),
         0xB7 => or_register8(cpu, Reg(A)),
         0xB8 => cp_register8(cpu, Reg(B)),
         0xB9 => cp_register8(cpu, Reg(C)),
@@ -193,40 +193,40 @@ pub fn execute(cpu: &mut Cpu, opcode: u8) -> u8 {
         0xBB => cp_register8(cpu, Reg(E)),
         0xBC => cp_register8(cpu, Reg(H)),
         0xBD => cp_register8(cpu, Reg(L)),
-        0xBE => cp_register8(cpu, Addr(HL)),
+        0xBE => cp_register8(cpu, Addr(HL, mmu)),
         0xBF => cp_register8(cpu, Reg(A)),
-        0xC0 => ret(cpu, Some(!cpu.regs.flags.zero)),
-        0xC1 => pop(cpu, BC),
-        0xC2 => jump_absolute(cpu, !cpu.regs.flags.zero),
-        0xC3 => jump_absolute(cpu, true),
-        0xC4 => call(cpu, !cpu.regs.flags.zero),
-        0xC5 => push(cpu, BC),
-        0xC6 => add_immediate(cpu, Positive, false),
-        0xC7 => rst(cpu, 0x00),
-        0xC8 => ret(cpu, Some(cpu.regs.flags.zero)),
-        0xC9 => ret(cpu, None),
-        0xCA => jump_absolute(cpu, cpu.regs.flags.zero),
+        0xC0 => ret(cpu, mmu, Some(!cpu.regs.flags.zero)),
+        0xC1 => pop(cpu, mmu, BC),
+        0xC2 => jump_absolute(cpu, mmu, !cpu.regs.flags.zero),
+        0xC3 => jump_absolute(cpu, mmu, true),
+        0xC4 => call(cpu, mmu, !cpu.regs.flags.zero),
+        0xC5 => push(cpu, mmu, BC),
+        0xC6 => add_immediate(cpu, mmu, Positive, false),
+        0xC7 => rst(cpu, mmu, 0x00),
+        0xC8 => ret(cpu, mmu, Some(cpu.regs.flags.zero)),
+        0xC9 => ret(cpu, mmu, None),
+        0xCA => jump_absolute(cpu, mmu, cpu.regs.flags.zero),
         0xCB => todo!(),
-        0xCC => call(cpu, cpu.regs.flags.zero),
-        0xCD => call(cpu, true),
-        0xCE => add_immediate(cpu, Positive, true),
-        0xCF => rst(cpu, 0x08),
-        0xD0 => ret(cpu, Some(!cpu.regs.flags.carry)),
-        0xD1 => pop(cpu, DE),
-        0xD2 => jump_absolute(cpu, !cpu.regs.flags.carry),
+        0xCC => call(cpu, mmu, cpu.regs.flags.zero),
+        0xCD => call(cpu, mmu, true),
+        0xCE => add_immediate(cpu, mmu, Positive, true),
+        0xCF => rst(cpu, mmu, 0x08),
+        0xD0 => ret(cpu, mmu, Some(!cpu.regs.flags.carry)),
+        0xD1 => pop(cpu, mmu, DE),
+        0xD2 => jump_absolute(cpu, mmu, !cpu.regs.flags.carry),
         0xD3 => unreachable!(),
-        0xD4 => call(cpu, !cpu.regs.flags.carry),
-        0xD5 => push(cpu, DE),
-        0xD6 => add_immediate(cpu, Negative, false),
-        0xD7 => rst(cpu, 0x10),
-        0xD8 => ret(cpu, Some(cpu.regs.flags.carry)),
-        0xD9 => reti(cpu),
-        0xDA => jump_absolute(cpu, cpu.regs.flags.carry),
+        0xD4 => call(cpu, mmu, !cpu.regs.flags.carry),
+        0xD5 => push(cpu, mmu, DE),
+        0xD6 => add_immediate(cpu, mmu, Negative, false),
+        0xD7 => rst(cpu, mmu, 0x10),
+        0xD8 => ret(cpu, mmu, Some(cpu.regs.flags.carry)),
+        0xD9 => reti(cpu, mmu),
+        0xDA => jump_absolute(cpu, mmu, cpu.regs.flags.carry),
         0xDB => unreachable!(),
-        0xDC => call(cpu, cpu.regs.flags.carry),
+        0xDC => call(cpu, mmu, cpu.regs.flags.carry),
         0xDD => unreachable!(),
-        0xDE => add_immediate(cpu, Negative, true),
-        0xDF => rst(cpu, 0x18),
+        0xDE => add_immediate(cpu, mmu, Negative, true),
+        0xDF => rst(cpu, mmu, 0x18),
         _ => unreachable!(),
     }
 }
@@ -236,36 +236,41 @@ fn nop(_cpu: &mut Cpu) -> u8 {
 }
 
 #[derive(Clone, Copy)]
-enum Operand {
+enum Operand<'a> {
     Reg(Register8),
-    Addr(Register16),
+    Addr(Register16, &'a Mmu<'a>),
 }
 
-impl Operand {
+impl<'a> Operand<'a> {
     fn value(self, cpu: &mut Cpu) -> u8 {
         match self {
             Self::Reg(reg) => cpu.regs[reg],
-            Self::Addr(reg) => cpu.memory.read(cpu.regs.combined(reg)),
+            Self::Addr(reg, mmu) => mmu.read(cpu.regs.combined(reg)),
         }
     }
 
     const fn extra_cycles(self) -> u8 {
         match self {
             Self::Reg(_) => 0,
-            Self::Addr(_) => 4,
+            Self::Addr(_, _) => 4,
         }
     }
 }
 
-fn ld_register16_immediate(cpu: &mut Cpu, reg: Register16) -> u8 {
-    let lsb = cpu.pop_prog_counter();
-    let msb = cpu.pop_prog_counter();
+fn ld_register16_immediate(cpu: &mut Cpu, mmu: &mut Mmu, reg: Register16) -> u8 {
+    let lsb = cpu.pop_prog_counter(mmu);
+    let msb = cpu.pop_prog_counter(mmu);
     cpu.regs.set_combined(reg, u16::from_le_bytes([lsb, msb]));
     12
 }
 
-fn ld_addr_from_register8(cpu: &mut Cpu, reg_addr: Register16, src: Register8) -> u8 {
-    cpu.memory.write(cpu.regs.combined(reg_addr), cpu.regs[src]);
+fn ld_addr_from_register8(
+    cpu: &mut Cpu,
+    mmu: &mut Mmu,
+    reg_addr: Register16,
+    src: Register8,
+) -> u8 {
+    mmu.write(cpu.regs.combined(reg_addr), cpu.regs[src]);
     8
 }
 
@@ -275,8 +280,8 @@ fn inc_register16(cpu: &mut Cpu, reg: Register16, val: i16) -> u8 {
     8
 }
 
-fn ld_register8_immediate(cpu: &mut Cpu, reg: Register8) -> u8 {
-    cpu.regs[reg] = cpu.pop_prog_counter();
+fn ld_register8_immediate(cpu: &mut Cpu, mmu: &mut Mmu, reg: Register8) -> u8 {
+    cpu.regs[reg] = cpu.pop_prog_counter(mmu);
     8
 }
 
@@ -298,12 +303,12 @@ fn rotate_circular_a(cpu: &mut Cpu, dir: Direction) -> u8 {
     4
 }
 
-fn ld_from_stack_pointer_immediate(cpu: &mut Cpu) -> u8 {
-    let lsb = cpu.pop_prog_counter();
-    let msb = cpu.pop_prog_counter();
+fn ld_from_stack_pointer_immediate(cpu: &mut Cpu, mmu: &mut Mmu) -> u8 {
+    let lsb = cpu.pop_prog_counter(mmu);
+    let msb = cpu.pop_prog_counter(mmu);
     let addr = u16::from_le_bytes([lsb, msb]);
-    cpu.memory.write(addr, lo(cpu.regs.stack_pointer));
-    cpu.memory.write(addr + 1, hi(cpu.regs.stack_pointer));
+    mmu.write(addr, lo(cpu.regs.stack_pointer));
+    mmu.write(addr + 1, hi(cpu.regs.stack_pointer));
     20
 }
 
@@ -319,8 +324,13 @@ fn add_register16(cpu: &mut Cpu, reg1: Register16, reg2: Register16) -> u8 {
     8
 }
 
-fn ld_register8_from_addr(cpu: &mut Cpu, dst: Register8, reg_addr: Register16) -> u8 {
-    cpu.regs[dst] = cpu.memory.read(cpu.regs.combined(reg_addr));
+fn ld_register8_from_addr(
+    cpu: &mut Cpu,
+    mmu: &mut Mmu,
+    dst: Register8,
+    reg_addr: Register16,
+) -> u8 {
+    cpu.regs[dst] = mmu.read(cpu.regs.combined(reg_addr));
     8
 }
 
@@ -333,9 +343,9 @@ fn inc_register8(cpu: &mut Cpu, reg: Register8, val: i8) -> u8 {
     4
 }
 
-fn stop(cpu: &mut Cpu) -> u8 {
+fn stop(cpu: &mut Cpu, mmu: &mut Mmu) -> u8 {
     cpu.halted = false;
-    cpu.pop_prog_counter();
+    cpu.pop_prog_counter(mmu);
     4
 }
 
@@ -352,17 +362,17 @@ fn rotate_a(cpu: &mut Cpu, dir: Direction) -> u8 {
     4
 }
 
-fn jump_relative(cpu: &mut Cpu, condition: bool) -> u8 {
+fn jump_relative(cpu: &mut Cpu, mmu: &mut Mmu, condition: bool) -> u8 {
     if !condition {
         return 8;
     }
-    let offset = cpu.pop_prog_counter() as i16;
+    let offset = cpu.pop_prog_counter(mmu) as i16;
     cpu.regs.prog_counter = ((cpu.regs.prog_counter as i16) + offset) as u16;
     12
 }
 
-fn ld_addr_from_a_increment(cpu: &mut Cpu, inc: i16) -> u8 {
-    ld_addr_from_register8(cpu, Register16::HL, Register8::A);
+fn ld_addr_from_a_increment(cpu: &mut Cpu, mmu: &mut Mmu, inc: i16) -> u8 {
+    ld_addr_from_register8(cpu, mmu, Register16::HL, Register8::A);
     cpu.regs.set_combined(
         Register16::HL,
         ((cpu.regs.combined(Register16::HL) as i16) + inc) as u16,
@@ -386,8 +396,8 @@ fn daa(cpu: &mut Cpu) -> u8 {
     4
 }
 
-fn ld_a_from_addr_increment(cpu: &mut Cpu, inc: i16) -> u8 {
-    ld_register8_from_addr(cpu, Register8::A, Register16::HL);
+fn ld_a_from_addr_increment(cpu: &mut Cpu, mmu: &mut Mmu, inc: i16) -> u8 {
+    ld_register8_from_addr(cpu, mmu, Register8::A, Register16::HL);
     cpu.regs.set_combined(
         Register16::HL,
         ((cpu.regs.combined(Register16::HL) as i16) + inc) as u16,
@@ -402,19 +412,19 @@ fn cpl(cpu: &mut Cpu) -> u8 {
     4
 }
 
-fn inc_addr(cpu: &mut Cpu, val: i8) -> u8 {
-    let byte = cpu.memory.read(cpu.regs.combined(Register16::HL));
+fn inc_addr(cpu: &mut Cpu, mmu: &mut Mmu, val: i8) -> u8 {
+    let byte = mmu.read(cpu.regs.combined(Register16::HL));
     let (result, carry) = byte.overflowing_add_signed(val);
-    cpu.memory.write(cpu.regs.combined(Register16::HL), result);
+    mmu.write(cpu.regs.combined(Register16::HL), result);
     cpu.regs.flags.zero = result == 0;
     cpu.regs.flags.neg = val < 0;
     cpu.regs.flags.half_carry = carry;
     12
 }
 
-fn ld_addr_from_immediate(cpu: &mut Cpu) -> u8 {
-    let byte = cpu.pop_prog_counter();
-    cpu.memory.write(cpu.regs.combined(Register16::HL), byte);
+fn ld_addr_from_immediate(cpu: &mut Cpu, mmu: &mut Mmu) -> u8 {
+    let byte = cpu.pop_prog_counter(mmu);
+    mmu.write(cpu.regs.combined(Register16::HL), byte);
     12
 }
 
@@ -500,7 +510,7 @@ fn cp_register8(cpu: &mut Cpu, operand: Operand) -> u8 {
     4 + operand.extra_cycles()
 }
 
-fn ret(cpu: &mut Cpu, condition: Option<bool>) -> u8 {
+fn ret(cpu: &mut Cpu, mmu: &mut Mmu, condition: Option<bool>) -> u8 {
     let (condition, cycles) = match condition {
         Some(cond) => {
             if cond {
@@ -514,48 +524,48 @@ fn ret(cpu: &mut Cpu, condition: Option<bool>) -> u8 {
     if !condition {
         return cycles;
     }
-    let lsb = cpu.memory.read(cpu.regs.stack_pointer);
+    let lsb = mmu.read(cpu.regs.stack_pointer);
     cpu.regs.stack_pointer += 1;
-    let msb = cpu.memory.read(cpu.regs.stack_pointer);
+    let msb = mmu.read(cpu.regs.stack_pointer);
     cpu.regs.stack_pointer += 1;
     let addr = u16::from_le_bytes([lsb, msb]);
     cpu.regs.prog_counter = addr;
     cycles
 }
 
-fn pop(cpu: &mut Cpu, dest: Register16) -> u8 {
-    let lsb = cpu.memory.read(cpu.regs.stack_pointer);
+fn pop(cpu: &mut Cpu, mmu: &mut Mmu, dest: Register16) -> u8 {
+    let lsb = mmu.read(cpu.regs.stack_pointer);
     cpu.regs.stack_pointer += 1;
-    let msb = cpu.memory.read(cpu.regs.stack_pointer);
+    let msb = mmu.read(cpu.regs.stack_pointer);
     cpu.regs.stack_pointer += 1;
     cpu.regs.set_combined(dest, u16::from_le_bytes([lsb, msb]));
     12
 }
 
-fn jump_absolute(cpu: &mut Cpu, condition: bool) -> u8 {
+fn jump_absolute(cpu: &mut Cpu, mmu: &mut Mmu, condition: bool) -> u8 {
     if !condition {
         return 12;
     }
-    let lsb = cpu.pop_prog_counter();
-    let msb = cpu.pop_prog_counter();
+    let lsb = cpu.pop_prog_counter(mmu);
+    let msb = cpu.pop_prog_counter(mmu);
     cpu.regs.prog_counter = u16::from_le_bytes([lsb, msb]);
     16
 }
 
-fn call(cpu: &mut Cpu, condition: bool) -> u8 {
+fn call(cpu: &mut Cpu, mmu: &mut Mmu, condition: bool) -> u8 {
     // The subroutine address is read even if the condition is false!
-    let lsb = cpu.pop_prog_counter();
-    let msb = cpu.pop_prog_counter();
+    let lsb = cpu.pop_prog_counter(mmu);
+    let msb = cpu.pop_prog_counter(mmu);
     if !condition {
         return 12;
     }
     cpu.regs.stack_pointer -= 1;
-    cpu.memory.write(
+    mmu.write(
         cpu.regs.stack_pointer,
         cpu.regs.prog_counter.to_be_bytes()[0],
     );
     cpu.regs.stack_pointer -= 1;
-    cpu.memory.write(
+    mmu.write(
         cpu.regs.stack_pointer,
         cpu.regs.prog_counter.to_be_bytes()[1],
     );
@@ -563,22 +573,22 @@ fn call(cpu: &mut Cpu, condition: bool) -> u8 {
     24
 }
 
-fn push(cpu: &mut Cpu, src: Register16) -> u8 {
+fn push(cpu: &mut Cpu, mmu: &mut Mmu, src: Register16) -> u8 {
     let bytes = cpu.regs.combined(src).to_be_bytes();
     cpu.regs.stack_pointer -= 1;
-    cpu.memory.write(cpu.regs.stack_pointer, bytes[0]);
+    mmu.write(cpu.regs.stack_pointer, bytes[0]);
     cpu.regs.stack_pointer -= 1;
-    cpu.memory.write(cpu.regs.stack_pointer, bytes[1]);
+    mmu.write(cpu.regs.stack_pointer, bytes[1]);
     16
 }
 
-fn add_immediate(cpu: &mut Cpu, sign: Sign, use_carry: bool) -> u8 {
+fn add_immediate(cpu: &mut Cpu, mmu: &mut Mmu, sign: Sign, use_carry: bool) -> u8 {
     let carry = if use_carry {
         cpu.regs.flags.carry as i8
     } else {
         0
     };
-    let operand = cpu.pop_prog_counter();
+    let operand = cpu.pop_prog_counter(mmu);
     let (result, carry) =
         cpu.regs[Register8::A].overflowing_add_signed((operand as i8 + carry) * sign as i8);
     cpu.regs[Register8::A] = result;
@@ -589,14 +599,14 @@ fn add_immediate(cpu: &mut Cpu, sign: Sign, use_carry: bool) -> u8 {
     4
 }
 
-fn rst(cpu: &mut Cpu, lsb: u8) -> u8 {
+fn rst(cpu: &mut Cpu, mmu: &mut Mmu, lsb: u8) -> u8 {
     cpu.regs.stack_pointer -= 1;
-    cpu.memory.write(
+    mmu.write(
         cpu.regs.stack_pointer,
         cpu.regs.prog_counter.to_be_bytes()[0],
     );
     cpu.regs.stack_pointer -= 1;
-    cpu.memory.write(
+    mmu.write(
         cpu.regs.stack_pointer,
         cpu.regs.prog_counter.to_be_bytes()[1],
     );
@@ -604,9 +614,9 @@ fn rst(cpu: &mut Cpu, lsb: u8) -> u8 {
     16
 }
 
-fn reti(cpu: &mut Cpu) -> u8 {
+fn reti(cpu: &mut Cpu, mmu: &mut Mmu) -> u8 {
     cpu.interrupt_enabled = true;
-    ret(cpu, None)
+    ret(cpu, mmu, None)
 }
 
 const fn lo(n: u16) -> u8 {

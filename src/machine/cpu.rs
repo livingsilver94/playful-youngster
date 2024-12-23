@@ -2,32 +2,31 @@ mod instructions;
 
 use std::ops;
 
-use crate::machine::memory;
+use crate::machine::memory::Mmu;
 
-pub struct Cpu<'a> {
+pub struct Cpu {
     regs: Registers,
-    memory: memory::Mmu<'a>,
 
     halted: bool,
     interrupt_enabled: bool,
 }
 
-impl<'a> Cpu<'a> {
-    pub fn new(mmu: memory::Mmu<'a>) -> Self {
+impl Cpu {
+    pub fn new() -> Self {
         Self {
             regs: Default::default(),
-            memory: mmu,
             halted: false,
             interrupt_enabled: true,
         }
     }
 
-    fn fetch(&mut self) {
-        let opcode = self.pop_prog_counter();
+    pub fn step(&mut self, mmu: &mut Mmu) -> u8 {
+        let opcode = self.pop_prog_counter(mmu);
+        instructions::execute(self, mmu, opcode)
     }
 
-    fn pop_prog_counter(&mut self) -> u8 {
-        let mem = self.memory.read(self.regs.prog_counter);
+    fn pop_prog_counter(&mut self, mmu: &mut Mmu) -> u8 {
+        let mem = mmu.read(self.regs.prog_counter);
         self.regs.prog_counter += 1;
         mem
     }
