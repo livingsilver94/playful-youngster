@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 bitmaps = "3.2.1"
+pixels = "0.14.0"
+thiserror = "2.0.8"
+winit = "0.29.15" # 0.30.x is not well documented yet. Stick with the older API for now.
