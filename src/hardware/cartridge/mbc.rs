@@ -5,7 +5,7 @@ mod mbc3;
 
 use std::io::{self, Read, Seek};
 
-use crate::machine::cartridge::Hardware;
+use crate::hardware::cartridge::Hardware;
 
 /// The logic that a cartridge follows according to its hardware.
 pub enum Mbc {

@@ -1,23 +1,34 @@
-use crate::machine::gpu::Gpu;
-use crate::machine::keypad::Keypad;
-use crate::machine::timer::Timer;
+mod apu;
+mod cartridge;
+mod cpu;
+mod graphics;
+mod keypad;
+mod timer;
 
-pub struct Mmu<'a> {
+pub use crate::hardware::cartridge::Cartridge;
+pub use crate::hardware::cpu::Cpu;
+pub use crate::hardware::keypad::Keypad;
+
+use crate::hardware::graphics::Gpu;
+use crate::hardware::timer::Timer;
+
+pub struct Hardware {
     work_ram: [u8; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
     echo_ram: [u8; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
-    gpu: &'a mut Gpu,
-    keypad: &'a mut Keypad,
-    timer: &'a mut Timer,
+
+    gpu: Gpu,
+    keypad: Keypad,
+    timer: Timer,
 }
 
-impl<'a> Mmu<'a> {
-    pub fn new_gb(gpu: &'a mut Gpu, keypad: &'a mut Keypad, timer: &'a mut Timer) -> Self {
+impl Hardware {
+    pub fn new() -> Self {
         Self {
             work_ram: [0; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
             echo_ram: [0; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
-            gpu,
-            keypad,
-            timer,
+            gpu: Gpu::new(),
+            keypad: Keypad::new(),
+            timer: Default::default(),
         }
     }
 
@@ -51,7 +62,7 @@ impl<'a> Mmu<'a> {
     fn read_interrupts(&self) -> u8 {
         let mut byte: u8 = 0;
         let ints: [Option<&dyn Interruptible>; 5] =
-            [None, None, Some(self.timer), None, Some(self.keypad)];
+            [None, None, Some(&self.timer), None, Some(&self.keypad)];
         for (i, per) in ints.iter().enumerate() {
             match per {
                 Some(per) => byte |= (per.has_interrupt() as u8) << i,
@@ -70,12 +81,6 @@ impl<'a> Mmu<'a> {
             self.write(WRITE_BASE + i, self.read(read_base + i))
         }
     }
-}
-
-pub trait RegisterMapping {
-    fn read_register(&self, idx: usize) -> u8;
-
-    fn write_register(&mut self, idx: usize, val: u8);
 }
 
 pub trait Interruptible {

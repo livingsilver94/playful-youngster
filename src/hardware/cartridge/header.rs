@@ -7,7 +7,7 @@
 
 use std::io::{self, Read, Seek};
 
-use crate::machine::cartridge::{self, mbc::Mbc};
+use crate::hardware::cartridge::{self, mbc::Mbc};
 
 #[derive(Clone, Copy)]
 pub struct CartridgeType(u8);

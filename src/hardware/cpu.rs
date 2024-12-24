@@ -2,7 +2,7 @@ mod instructions;
 
 use std::ops;
 
-use crate::machine::memory::Mmu;
+use crate::hardware::Hardware;
 
 pub struct Cpu {
     regs: Registers,
@@ -20,13 +20,13 @@ impl Cpu {
         }
     }
 
-    pub fn step(&mut self, mmu: &mut Mmu) -> u8 {
-        let opcode = self.pop_prog_counter(mmu);
-        instructions::execute(self, mmu, opcode)
+    pub fn step(&mut self, hw: &mut Hardware) -> u8 {
+        let opcode = self.pop_prog_counter(hw);
+        instructions::execute(self, hw, opcode)
     }
 
-    fn pop_prog_counter(&mut self, mmu: &mut Mmu) -> u8 {
-        let mem = mmu.read(self.regs.prog_counter);
+    fn pop_prog_counter(&mut self, hw: &mut Hardware) -> u8 {
+        let mem = hw.read(self.regs.prog_counter);
         self.regs.prog_counter += 1;
         mem
     }

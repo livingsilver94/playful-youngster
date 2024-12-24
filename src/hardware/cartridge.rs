@@ -5,8 +5,6 @@ use std::io::{self, Read, Seek, SeekFrom};
 
 use mbc::Mbc;
 
-use crate::machine::memory::RegisterMapping;
-
 pub struct Cartridge<R: Read + Seek> {
     hw: Hardware<R>,
     /// Whether or not the cartridge sports a battery.
@@ -179,6 +177,28 @@ impl Rtc {
         }
     }
 
+    pub fn read_register(&self, idx: usize) -> u8 {
+        match idx {
+            0 => self.registers.seconds,
+            1 => self.registers.minutes,
+            2 => self.registers.hours,
+            3 => self.registers.days_lower,
+            4 => self.registers.bools.0.into_value(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn write_register(&mut self, idx: usize, val: u8) {
+        match idx {
+            0 => self.registers.seconds = val,
+            1 => self.registers.minutes = val,
+            2 => self.registers.hours = val,
+            3 => self.registers.days_lower = val,
+            4 => self.registers.bools = RtcBoolRegisters(bitmaps::Bitmap::<8>::from_value(val)),
+            _ => unreachable!(),
+        }
+    }
+
     fn read_current_register(&self) -> u8 {
         if !self.enabled {
             return 0xFF;
@@ -206,30 +226,6 @@ impl Rtc {
             todo!("Save latched value");
         }
         self.latched = latched;
-    }
-}
-
-impl RegisterMapping for Rtc {
-    fn read_register(&self, idx: usize) -> u8 {
-        match idx {
-            0 => self.registers.seconds,
-            1 => self.registers.minutes,
-            2 => self.registers.hours,
-            3 => self.registers.days_lower,
-            4 => self.registers.bools.0.into_value(),
-            _ => unreachable!(),
-        }
-    }
-
-    fn write_register(&mut self, idx: usize, val: u8) {
-        match idx {
-            0 => self.registers.seconds = val,
-            1 => self.registers.minutes = val,
-            2 => self.registers.hours = val,
-            3 => self.registers.days_lower = val,
-            4 => self.registers.bools = RtcBoolRegisters(bitmaps::Bitmap::<8>::from_value(val)),
-            _ => unreachable!(),
-        }
     }
 }
 

@@ -1,6 +1,4 @@
-use crate::machine::memory::RegisterMapping;
-
-use super::memory::Interruptible;
+use crate::hardware::Interruptible;
 
 #[derive(Default)]
 pub struct Timer {
@@ -51,10 +49,8 @@ impl Timer {
         }
         self.enabled = enabled;
     }
-}
 
-impl RegisterMapping for Timer {
-    fn read_register(&self, idx: usize) -> u8 {
+    pub fn read_register(&self, idx: usize) -> u8 {
         match idx {
             0 => (self.divider >> 8) as u8,
             1 => self.counter,
@@ -64,7 +60,7 @@ impl RegisterMapping for Timer {
         }
     }
 
-    fn write_register(&mut self, idx: usize, val: u8) {
+    pub fn write_register(&mut self, idx: usize, val: u8) {
         match idx {
             0 => {
                 self.divider = 0;

@@ -1,9 +1,13 @@
 mod oam;
+mod ppu;
 mod registers;
+mod tile;
 
-use crate::machine::memory::RegisterMapping;
 use oam::ObjAttr;
 use registers::{LcdControl, LcdStatus, Palette};
+
+pub const SCREEN_WIDTH: u32 = 166;
+pub const SCREEN_HEIGHT: u32 = 140;
 
 pub struct Gpu {
     lcd_control: LcdControl,
@@ -25,7 +29,7 @@ pub struct Gpu {
 }
 
 impl Gpu {
-    pub fn new_gb() -> Self {
+    pub fn new() -> Self {
         Self {
             lcd_control: Default::default(),
             lcd_status: Default::default(),
@@ -78,16 +82,7 @@ impl Gpu {
         attr[addr as usize % ATTR_SIZE] = val;
     }
 
-    fn real_background_coords(&self) -> (u16, u16) {
-        (
-            (self.background_y as u16 + 143) % 256,
-            (self.background_x as u16 + 159) % 256,
-        )
-    }
-}
-
-impl RegisterMapping for Gpu {
-    fn read_register(&self, idx: usize) -> u8 {
+    pub fn read_register(&self, idx: usize) -> u8 {
         match idx {
             0x0 => self.lcd_control.into(),
             0x2 => self.background_y,
@@ -102,7 +97,7 @@ impl RegisterMapping for Gpu {
         }
     }
 
-    fn write_register(&mut self, idx: usize, val: u8) {
+    pub fn write_register(&mut self, idx: usize, val: u8) {
         match idx {
             0x0 => {
                 self.lcd_control = val.into();
@@ -120,6 +115,13 @@ impl RegisterMapping for Gpu {
             0xB => self.window_x = val,
             _ => todo!(),
         }
+    }
+
+    fn real_background_coords(&self) -> (u16, u16) {
+        (
+            (self.background_y as u16 + 143) % 256,
+            (self.background_x as u16 + 159) % 256,
+        )
     }
 }
 
@@ -198,8 +200,7 @@ enum Color {
 
 impl From<u8> for Color {
     fn from(value: u8) -> Self {
-        let value = value & 0x3;
-        match value {
+        match value & 0b11 {
             x if x == Self::White as u8 => Self::White,
             x if x == Self::LightGray as u8 => Self::LightGray,
             x if x == Self::DarkGray as u8 => Self::DarkGray,

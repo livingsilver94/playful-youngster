@@ -1,6 +1,6 @@
 use std::io::{self, Read, Seek};
 
-use crate::machine::cartridge::{BankingMode, Hardware};
+use crate::hardware::cartridge::{BankingMode, Hardware};
 
 pub fn read<R: Read + Seek>(hw: &mut Hardware<R>, addr: u16) -> io::Result<u8> {
     match addr {

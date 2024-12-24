@@ -1,4 +1,4 @@
-use crate::machine::memory::{Interruptible, RegisterMapping};
+use crate::hardware::Interruptible;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Button {
@@ -38,10 +38,8 @@ impl Keypad {
             *row |= 1 << index;
         }
     }
-}
 
-impl RegisterMapping for Keypad {
-    fn read_register(&self, idx: usize) -> u8 {
+    pub fn read_register(&self, idx: usize) -> u8 {
         if idx > 0 {
             panic!("keypad maps only one byte")
         }
@@ -54,7 +52,7 @@ impl RegisterMapping for Keypad {
         0xF
     }
 
-    fn write_register(&mut self, idx: usize, val: u8) {
+    pub fn write_register(&mut self, idx: usize, val: u8) {
         if idx > 0 {
             panic!("keypad maps only one byte")
         }
