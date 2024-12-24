@@ -2,11 +2,12 @@ mod apu;
 mod cartridge;
 mod cpu;
 mod graphics;
-mod keypad;
+pub mod keypad;
 mod timer;
 
 pub use crate::hardware::cartridge::Cartridge;
 pub use crate::hardware::cpu::Cpu;
+use crate::hardware::keypad::Button;
 pub use crate::hardware::keypad::Keypad;
 
 use crate::hardware::graphics::Gpu;
@@ -57,6 +58,10 @@ impl Hardware {
             _ => todo!(),
         }
         todo!()
+    }
+
+    pub fn press_key(&mut self, btn: Button, pressed: bool) {
+        self.keypad.set_pressed(btn, pressed);
     }
 
     fn read_interrupts(&self) -> u8 {

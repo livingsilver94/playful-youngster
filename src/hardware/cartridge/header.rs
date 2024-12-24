@@ -3,7 +3,7 @@
 //! as an emulator, we are interested in the memory controller, ROM and RAM size, and
 //! whether a battery is included.
 //!
-//! See https://gbdev.io/pandocs/The_Cartridge_Header.html#the-cartridge-header
+//! See <https://gbdev.io/pandocs/The_Cartridge_Header.html#the-cartridge-header>
 
 use std::io::{self, Read, Seek};
 
