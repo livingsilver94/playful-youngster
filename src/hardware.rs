@@ -1,17 +1,22 @@
+pub mod keypad;
+
 mod apu;
 mod cartridge;
 mod cpu;
 mod graphics;
-pub mod keypad;
 mod timer;
 
 pub use crate::hardware::cartridge::Cartridge;
 pub use crate::hardware::cpu::Cpu;
-use crate::hardware::keypad::Button;
-pub use crate::hardware::keypad::Keypad;
 
 use crate::hardware::graphics::Gpu;
+use crate::hardware::keypad::Button;
+use crate::hardware::keypad::Keypad;
 use crate::hardware::timer::Timer;
+
+/// Master clock for all hardware.
+/// Some components may run at a submultiple of this frequency, though.
+const MASTER_CLOCK: u32 = 4 * 1024 * 1024;
 
 pub struct Hardware {
     work_ram: [u8; (WORK_RAM_END - WORK_RAM_START + 1) as usize],

@@ -1,4 +1,21 @@
+mod square;
+
 use bitflags::BitFlags8;
+
+use crate::hardware::apu::square::SquareChannel;
+
+/// Sample rate of all sound.
+const SAMPLE_RATE: u32 = 22050;
+
+/// Size, in bytes, of the sound buffer.
+const BUFFER_SIZE: u32 = 1024;
+
+/// Size, in bytes, of one sound sample.
+const SAMPLE_SIZE: u32 = 1;
+
+/// Number of buffers to pass to the sound card, per second, to play the sound.
+// The division by is because sound is stereo: there are 2 channels.
+const BUFFERS_PER_SECOND: u32 = SAMPLE_RATE / ((BUFFER_SIZE / SAMPLE_SIZE) / 2);
 
 const ENVELOPE_DIVIDER: u32 = 8;
 const SOUND_LENGHT_DIVIDER: u32 = 2;
@@ -8,11 +25,37 @@ const CH1_SWEEP_DIVIDER: u32 = 4;
 
 pub struct Apu {
     volume: MasterVolume,
-    ch1: Channel1,
-    ch2: Channel2,
+    ch1: SquareChannel,
+    ch2: SquareChannel,
+
+    /// Number of clock ticks that have passed.
+    /// Tick count is used to synchronize [Self::frame_sequencer].
+    ticks: u32,
+    /// Clock generator for Sweep, Envelope and Length.
+    /// It counts from 0 to 7, and for each of these values, one or more effect
+    /// generators are activated.
+    frame_sequencer: u8,
 }
 
 impl Apu {
+    fn tick(&mut self) {
+        self.ticks = self.ticks.wrapping_add(1);
+        if self.ticks % 8192 == 0 {
+            match self.frame_sequencer {
+                0 => todo!(),
+                1 => todo!(),
+                2 => todo!(),
+                3 => todo!(),
+                4 => todo!(),
+                5 => todo!(),
+                6 => todo!(),
+                7 => todo!(),
+                _ => unreachable!(),
+            }
+            self.frame_sequencer = (self.frame_sequencer + 1) % 8;
+        }
+    }
+
     fn read_register(&self, idx: usize) -> u8 {
         match idx {
             0x01 => (self.ch1.duty_cycle_pattern << 6) & self.ch1.length_timer,
@@ -65,117 +108,3 @@ impl From<u8> for MasterVolume {
         Self(BitFlags8::from(value))
     }
 }
-
-struct Channel1 {
-    /// Sets the duty cycle pattern. It's the index of a row of [DUTY_CYCLES].
-    duty_cycle_pattern: u8,
-    /// Sets whether the sound is on or off at this time, depending on the current duty cycle pattern.
-    /// It's the index of a column of [DUTY_CYCLES].
-    duty_cycle_position: u8,
-
-    /// A timer that, when it reaches 64, makes the channel to turn off automatically.
-    length_timer: u8,
-
-    /// Lower 8 bits of the frequency of the sound. The upper 3 bits are contained in [Self::period_upper_ctrl].
-    ///
-    /// APU doesn't work with _frequencies_ as audio documentation usually does,
-    /// but uses time _periods_.
-    /// This register acts as a counter that is added +1 for each clock cycle. When it overflows,
-    /// the content is reloaded with a formula.
-    period_lower: u8,
-
-    /// Upper 3 bits of the frequency of the sound, plus other control bits.
-    period_upper_ctrl: PeriodUpperControl,
-}
-
-impl Channel1 {
-    /// Gets the frequency of the sound.
-    /// This is a convenience method that merges 2 register values.
-    const fn period(&self) -> u16 {
-        (self.period_upper_ctrl.period_upper() as u16) << 8 | self.period_lower as u16
-    }
-
-    const fn amplitude(&self) -> u8 {
-        DUTY_CYCLES[self.duty_cycle_pattern as usize][self.duty_cycle_position as usize]
-    }
-
-    /// Sets the frequency of the sound.
-    /// This is a convenience method that merges 2 register values.
-    const fn set_period(&mut self, period: u16) {
-        self.period_lower = (period & 0xFF) as u8;
-        self.period_upper_ctrl
-            .set_period_upper((period >> 8) as u8 & 0b111);
-    }
-}
-
-struct Channel2 {
-    /// Sets the duty cycle pattern. It's the index of a row of [DUTY_CYCLES].
-    duty_cycle_pattern: u8,
-    /// Sets whether the sound is on or off at this time, depending on the current duty cycle pattern.
-    /// It's the index of a column of [DUTY_CYCLES].
-    duty_cycle_position: u8,
-
-    /// A timer that, when it reaches 64, makes the channel to turn off automatically.
-    length_timer: u8,
-
-    /// Lower 8 bits of the frequency of the sound. The upper 3 bits are contained in [Self::period_upper_ctrl].
-    ///
-    /// APU doesn't work with _frequencies_ as audio documentation usually does,
-    /// but uses time _periods_.
-    /// This register acts as a counter that is added +1 for each clock cycle. When it overflows,
-    /// the content is reloaded with a formula.
-    period_lower: u8,
-
-    /// Upper 3 bits of the frequency of the sound, plus other control bits.
-    period_upper_ctrl: PeriodUpperControl,
-}
-
-impl Channel2 {
-    fn step(ticks: u32) {}
-
-    /// Gets the frequency of the sound.
-    /// This is a convenience method that merges 2 register values.
-    const fn period(&self) -> u16 {
-        (self.period_upper_ctrl.period_upper() as u16) << 8 | self.period_lower as u16
-    }
-
-    const fn amplitude(&self) -> u8 {
-        DUTY_CYCLES[self.duty_cycle_pattern as usize][self.duty_cycle_position as usize]
-    }
-
-    /// Sets the frequency of the sound.
-    /// This is a convenience method that merges 2 register values.
-    const fn set_period(&mut self, period: u16) {
-        self.period_lower = (period & 0xFF) as u8;
-        self.period_upper_ctrl
-            .set_period_upper((period >> 8) as u8 & 0b111);
-    }
-}
-
-struct PeriodUpperControl(bitflags::BitFlags8);
-
-impl PeriodUpperControl {
-    const fn is_triggered(&self) -> bool {
-        self.0.get(7)
-    }
-
-    const fn is_length_timer_enabled(&self) -> bool {
-        self.0.get(6)
-    }
-
-    const fn period_upper(&self) -> u8 {
-        self.0.get_range(0..=2)
-    }
-
-    const fn set_period_upper(&mut self, value: u8) {
-        self.0.set_range(0..=2, value);
-    }
-}
-
-/// Possible duty cycle patterns for the APU.
-const DUTY_CYCLES: [[u8; 8]; 4] = [
-    [0, 0, 0, 0, 0, 0, 0, 1], // 12.5%
-    [0, 0, 0, 0, 0, 0, 1, 1], // 25%
-    [0, 0, 0, 0, 1, 1, 1, 1], // 50%
-    [1, 1, 1, 1, 1, 1, 0, 0], // 75%
-];
