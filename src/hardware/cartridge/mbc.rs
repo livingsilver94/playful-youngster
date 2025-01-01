@@ -3,7 +3,7 @@ mod mbc1;
 mod mbc2;
 mod mbc3;
 
-use std::io::{self, Read, Seek};
+use std::io;
 
 use crate::hardware::cartridge::Hardware;
 
@@ -16,7 +16,7 @@ pub enum Mbc {
 }
 
 impl Mbc {
-    pub fn read<R: Read + Seek>(&self, mem: &mut Hardware<R>, addr: u16) -> io::Result<u8> {
+    pub fn read(&self, mem: &mut Hardware, addr: u16) -> io::Result<u8> {
         match self {
             Self::Mbc0 => mbc0::read(mem, addr),
             Self::Mbc1 => mbc1::read(mem, addr),
@@ -25,7 +25,7 @@ impl Mbc {
         }
     }
 
-    pub fn write<R: Read + Seek>(&mut self, mem: &mut Hardware<R>, addr: u16, val: u8) {
+    pub fn write(&mut self, mem: &mut Hardware, addr: u16, val: u8) {
         match self {
             Self::Mbc0 => (),
             Self::Mbc1 => mbc1::write(mem, addr, val),

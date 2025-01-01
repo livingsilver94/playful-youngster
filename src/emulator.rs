@@ -1,55 +1,43 @@
+use std::io;
+
 use winit::{
+    application::ApplicationHandler,
     error::{EventLoopError, OsError},
-    event::{Event, KeyEvent, WindowEvent},
-    event_loop::EventLoop,
+    event::{KeyEvent, WindowEvent},
+    event_loop::ActiveEventLoop,
     keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowBuilder},
+    window::{Window, WindowAttributes, WindowId},
 };
 
-use crate::hardware::{keypad::Button, Cpu, Hardware};
+use crate::hardware::{keypad::Button, Cartridge, Cpu, Hardware};
+
+/// Target framerate (aka FPS) for the emulator.
+const FRAMERATE: u32 = 60;
 
 pub struct Emulator {
+    // Emulated hardware.
     cpu: Cpu,
     hw: Hardware,
 
-    event_loop: EventLoop<()>,
-    window: Window,
+    // OS facilities.
+    window: Option<Window>,
 }
 
 impl Emulator {
     pub fn new() -> Result<Self, Error> {
-        let event_loop = EventLoop::new()?;
-        let window = WindowBuilder::new()
-            .with_title("Playful Youngster")
-            .build(&event_loop)?;
-        window.set_cursor_visible(false);
-
         Ok(Self {
             cpu: Cpu::new(),
             hw: Hardware::new(),
 
-            event_loop,
-            window,
+            window: None,
         })
     }
 
-    pub fn run(mut self) -> Result<(), Error> {
-        self.event_loop
-            .run(|event, evt_loop| {
-                if let Event::WindowEvent { event, .. } = event {
-                    match event {
-                        WindowEvent::CloseRequested => evt_loop.exit(),
-                        WindowEvent::KeyboardInput { event, .. } => {
-                            Self::press_key(&mut self.hw, event)
-                        }
-                        _ => (),
-                    }
-                }
-            })
-            .map_err(Error::from)
+    pub fn insert_cartridge(&mut self, cart: Cartridge) {
+        self.hw.insert_cartridge(cart);
     }
 
-    fn press_key(hw: &mut Hardware, event: KeyEvent) {
+    fn press_key(&mut self, event: KeyEvent) {
         let button = match event.physical_key {
             PhysicalKey::Code(code) => match code {
                 KeyCode::KeyW => Button::Up,
@@ -64,7 +52,29 @@ impl Emulator {
             },
             _ => return,
         };
-        hw.press_key(button, event.state.is_pressed());
+        self.hw.press_key(button, event.state.is_pressed());
+    }
+}
+
+impl ApplicationHandler for Emulator {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.window.is_some() {
+            return;
+        }
+        event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+        let window = event_loop
+            .create_window(WindowAttributes::default().with_title("Playful Youngster"))
+            .unwrap();
+        window.set_cursor_visible(false);
+        self.window = Some(window);
+    }
+
+    fn window_event(&mut self, evtloop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        match event {
+            WindowEvent::KeyboardInput { event, .. } => self.press_key(event),
+            WindowEvent::CloseRequested => evtloop.exit(),
+            _ => (),
+        }
     }
 }
 
@@ -72,6 +82,9 @@ impl Emulator {
 pub enum Error {
     #[error("failed to inizialize the graphics user interface: {0}")]
     Gui(String),
+
+    #[error("I/O error")]
+    Io(#[from] io::Error),
 }
 
 impl From<OsError> for Error {

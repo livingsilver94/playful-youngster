@@ -5,8 +5,8 @@ use std::io::{self, Read, Seek, SeekFrom};
 
 use mbc::Mbc;
 
-pub struct Cartridge<R: Read + Seek> {
-    hw: Hardware<R>,
+pub struct Cartridge {
+    hw: Hardware,
     /// Whether or not the cartridge sports a battery.
     /// The battery is used to retain values in RAM and/or
     /// power the embedded RTC. As far as the emulation is concerned,
@@ -17,9 +17,9 @@ pub struct Cartridge<R: Read + Seek> {
     mbc: Mbc,
 }
 
-impl<R: Read + Seek> Cartridge<R> {
+impl Cartridge {
     /// Builds a cartridge hardware emulator according to a header contained in the cartridge itself.
-    pub fn new_from_header(mut data: R) -> io::Result<Self> {
+    pub fn new_from_header(mut data: Box<dyn RomSource>) -> io::Result<Self> {
         let cartridge_type = header::cartridge_type(&mut data)?;
         let rom_banks = header::rom_banks(&mut data)?;
         let ram_banks = header::ram_banks(&mut data, cartridge_type)?;
@@ -31,8 +31,11 @@ impl<R: Read + Seek> Cartridge<R> {
     }
 }
 
-struct Rom<R: Read + Seek> {
-    data: R,
+pub trait RomSource: Read + Seek {}
+impl<T: Read + Seek> RomSource for T {}
+
+struct Rom {
+    data: Box<dyn RomSource>,
     /// Number of banks composing the ROM.
     banks: u8,
     /// The currently selected ROM bank.
@@ -41,11 +44,11 @@ struct Rom<R: Read + Seek> {
     curr_bank: u8,
 }
 
-impl<R: Read + Seek> Rom<R> {
+impl Rom {
     /// Size, in bytes, of each ROM bank.
     const BANK_SIZE: u16 = 16 * 1024;
 
-    fn new(data: R, banks: u8) -> Self {
+    fn new(data: Box<dyn RomSource>, banks: u8) -> Self {
         Self {
             data,
             banks,
@@ -130,15 +133,15 @@ impl Ram {
     }
 }
 
-struct Hardware<R: Read + Seek> {
-    pub rom: Rom<R>,
+struct Hardware {
+    pub rom: Rom,
     pub ram: Ram,
     pub rtc: Rtc,
     pub banking_mode: BankingMode,
 }
 
-impl<R: Read + Seek> Hardware<R> {
-    fn new(data: R, rom_banks: u8, ram_banks: u8) -> Self {
+impl Hardware {
+    fn new(data: Box<dyn RomSource>, rom_banks: u8, ram_banks: u8) -> Self {
         Self {
             rom: Rom::new(data, rom_banks),
             ram: Ram::new(ram_banks),

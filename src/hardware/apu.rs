@@ -2,7 +2,7 @@ mod square;
 
 use bitflags::BitFlags8;
 
-use crate::hardware::apu::square::SquareChannel;
+use square::SquareChannel;
 
 /// Sample rate of all sound.
 const SAMPLE_RATE: u32 = 22050;
@@ -38,6 +38,9 @@ pub struct Apu {
 }
 
 impl Apu {
+    /// Advances the internal state of the APU and produces one audio sample.
+    ///
+    /// This function must be called at the [SAMPLE_RATE] frequency, not at the [crate::hardware::MASTER_CLOCK] frequency.
     fn tick(&mut self) {
         self.ticks = self.ticks.wrapping_add(1);
         if self.ticks % 8192 == 0 {

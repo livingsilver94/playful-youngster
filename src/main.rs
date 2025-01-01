@@ -1,6 +1,8 @@
 mod emulator;
 mod hardware;
 
+use winit::event_loop::EventLoop;
+
 use std::fs::File;
 
 use hardware::Cartridge;
@@ -8,11 +10,13 @@ use hardware::Cartridge;
 use crate::emulator::{Emulator, Error};
 
 fn main() -> Result<(), Error> {
-    let cartridge = File::open("/tmp/cart").unwrap();
+    let cartridge = Box::new(File::open("/tmp/cart")?);
 
-    let emu = Emulator::new()?;
-    //machine.insert_cartridge(Cartridge::new_from_header(cartridge).unwrap());
+    let mut emu = Emulator::new()?;
+    emu.insert_cartridge(Cartridge::new_from_header(cartridge)?);
 
-    emu.run();
+    let evtloop = EventLoop::new()?;
+    evtloop.run_app(&mut emu)?;
+
     Ok(())
 }

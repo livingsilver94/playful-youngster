@@ -23,6 +23,7 @@ pub struct Hardware {
     echo_ram: [u8; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
 
     gpu: Gpu,
+    cartrdige: Option<Cartridge>,
     keypad: Keypad,
     timer: Timer,
 }
@@ -32,7 +33,9 @@ impl Hardware {
         Self {
             work_ram: [0; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
             echo_ram: [0; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
+
             gpu: Gpu::new(),
+            cartrdige: None,
             keypad: Keypad::new(),
             timer: Default::default(),
         }
@@ -67,6 +70,10 @@ impl Hardware {
 
     pub fn press_key(&mut self, btn: Button, pressed: bool) {
         self.keypad.set_pressed(btn, pressed);
+    }
+
+    pub fn insert_cartridge(&mut self, cart: Cartridge) {
+        self.cartrdige = Some(cart);
     }
 
     fn read_interrupts(&self) -> u8 {

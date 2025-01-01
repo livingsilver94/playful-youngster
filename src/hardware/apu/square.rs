@@ -1,11 +1,22 @@
 use crate::hardware::MASTER_CLOCK;
 
 pub struct SquareChannel {
+    /// The raw period of the sound wave.
+    ///
+    /// APU doesn't work with _frequencies_ as audio documentation usually does,
+    /// but uses time _periods_.
+    ///
+    /// Since the raw period is composed of 11 bits, it reaches `2^11 - 1 = 2047`.
+    /// This value is way lower than the usual human audible range, which tops at 20 kHz.
+    /// A formula is required to covert this raw _period_ value into a proper human frequency.
+    pub raw_period: u16,
+
     /// A timer that, when it reaches 64, makes the channel to turn off automatically.
     pub length_timer: u8,
 
     /// Sets the duty cycle pattern. It's the index of a row of [DUTY_CYCLES].
     pub duty_cycle_pattern: u8,
+
     /// Sets whether the sound is on or off at this time, depending on the current duty cycle pattern.
     /// It's the index of a column of [DUTY_CYCLES].
     duty_cycle_position: u8,
@@ -14,13 +25,6 @@ pub struct SquareChannel {
     /// When it reaches zero, its value is recalculated to a starting value and [Self::duty_cycle_position]
     /// advances.
     frequency_timer: u16,
-
-    /// The raw period of the sound wave. Using a formula, this number can be converted into actual
-    /// audible hertz.
-    ///
-    /// APU doesn't work with _frequencies_ as audio documentation usually does,
-    /// but uses time _periods_.
-    raw_period: u16,
 
     /// Control bits.
     controls: Controls,
@@ -37,26 +41,10 @@ impl SquareChannel {
         0
     }
 
-    /// Returns the raw _period_ of the sound wave.
-    ///
-    /// Since the raw period is composed of 11 bits, it reaches `2^11 - 1 = 2047`.
-    /// This value is way lower than the usual human audible range, which tops at 20 kHz.
-    /// A formula is required to covert this raw _period_ value into a proper human frequency.
-    ///
-    /// This is a convenience method that merges 2 register values.
-    pub const fn raw_period(&self) -> u16 {
-        self.raw_period
-    }
-
-    /// Sets the raw period of the sound wave.
-    pub const fn set_raw_period(&mut self, value: u16) {
-        self.raw_period = value;
-    }
-
     /// Returns the real frequency, in Hz, computed from the raw period.
     const fn frequency(&self) -> u32 {
         // See https://gbdev.io/pandocs/Audio_Registers.html#ff13--nr13-channel-1-period-low-write-only
-        131072 / (2048 - self.raw_period() as u32)
+        131072 / (2048 - self.raw_period as u32)
     }
 
     const fn amplitude(&self) -> u8 {

@@ -1,8 +1,8 @@
-use std::io::{self, Read, Seek};
+use std::io;
 
 use crate::hardware::cartridge::Hardware;
 
-pub fn read<R: Read + Seek>(hw: &mut Hardware<R>, addr: u16) -> io::Result<u8> {
+pub fn read(hw: &mut Hardware, addr: u16) -> io::Result<u8> {
     match addr {
         0x0000..=0x3FFF => hw.rom.at(addr),
         0x4000..=0x7FFF => hw.rom.at_current_bank(addr - 0x4000),
@@ -12,7 +12,7 @@ pub fn read<R: Read + Seek>(hw: &mut Hardware<R>, addr: u16) -> io::Result<u8> {
     }
 }
 
-pub fn write<R: Read + Seek>(hw: &mut Hardware<R>, addr: u16, val: u8) {
+pub fn write(hw: &mut Hardware, addr: u16, val: u8) {
     match addr {
         0x0000..=0x3FFF => {
             // The LSB of the address controls whether
