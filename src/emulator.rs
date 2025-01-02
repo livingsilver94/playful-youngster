@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, thread, time};
 
 use winit::{
     application::ApplicationHandler,
@@ -9,7 +9,7 @@ use winit::{
     window::{Window, WindowAttributes, WindowId},
 };
 
-use crate::hardware::{keypad::Button, Cartridge, Cpu, Hardware};
+use crate::hardware::{self, keypad::Button, Cartridge, Cpu, Hardware};
 
 /// Target framerate (aka FPS) for the emulator.
 const FRAMERATE: u32 = 60;
@@ -52,17 +52,32 @@ impl Emulator {
             },
             _ => return,
         };
-        self.hw.press_key(button, event.state.is_pressed());
+        self.hw.keypad.set_pressed(button, event.state.is_pressed());
+    }
+
+    fn process_frame(&mut self) {
+        const TICKS_IN_FRAMERATE: u32 = hardware::MASTER_CLOCK / FRAMERATE;
+        const FRAMETIME: f32 = 1.0 / (FRAMERATE as f32);
+
+        let mut total_ticks = 0;
+        let duration = time::Instant::now();
+        while total_ticks < TICKS_IN_FRAMERATE {
+            let ticks = self.cpu.tick(&mut self.hw);
+            self.hw.timer.tick(ticks);
+            total_ticks += ticks as u32;
+        }
+        thread::sleep(time::Duration::from_secs_f32(FRAMETIME).saturating_sub(duration.elapsed()));
     }
 }
 
 impl ApplicationHandler for Emulator {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+    fn resumed(&mut self, evtloop: &ActiveEventLoop) {
+        evtloop.set_control_flow(winit::event_loop::ControlFlow::Poll);
         if self.window.is_some() {
             return;
         }
-        event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
-        let window = event_loop
+
+        let window = evtloop
             .create_window(WindowAttributes::default().with_title("Playful Youngster"))
             .unwrap();
         window.set_cursor_visible(false);
@@ -75,6 +90,11 @@ impl ApplicationHandler for Emulator {
             WindowEvent::CloseRequested => evtloop.exit(),
             _ => (),
         }
+    }
+
+    fn about_to_wait(&mut self, evtloop: &ActiveEventLoop) {
+        evtloop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+        self.process_frame();
     }
 }
 

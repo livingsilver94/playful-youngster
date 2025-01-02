@@ -1,6 +1,6 @@
 use crate::hardware::cpu::*;
 
-pub fn execute(cpu: &mut Cpu, hw: &mut Hardware, opcode: u8) -> u8 {
+pub fn execute(cpu: &mut Cpu, hw: &mut Hardware, opcode: u8) -> u16 {
     use {Operand::*, Register16::*, Register8::*, Sign::*};
     match opcode {
         0x00 => nop(cpu),
@@ -231,7 +231,7 @@ pub fn execute(cpu: &mut Cpu, hw: &mut Hardware, opcode: u8) -> u8 {
     }
 }
 
-fn nop(_cpu: &mut Cpu) -> u8 {
+fn nop(_cpu: &mut Cpu) -> u16 {
     4
 }
 
@@ -249,7 +249,7 @@ impl<'a> Operand<'a> {
         }
     }
 
-    const fn extra_cycles(self) -> u8 {
+    const fn extra_cycles(self) -> u16 {
         match self {
             Self::Reg(_) => 0,
             Self::Addr(_, _) => 4,
@@ -257,7 +257,7 @@ impl<'a> Operand<'a> {
     }
 }
 
-fn ld_register16_immediate(cpu: &mut Cpu, hw: &mut Hardware, reg: Register16) -> u8 {
+fn ld_register16_immediate(cpu: &mut Cpu, hw: &mut Hardware, reg: Register16) -> u16 {
     let lsb = cpu.pop_prog_counter(hw);
     let msb = cpu.pop_prog_counter(hw);
     cpu.regs.set_combined(reg, u16::from_le_bytes([lsb, msb]));
@@ -269,18 +269,18 @@ fn ld_addr_from_register8(
     hw: &mut Hardware,
     reg_addr: Register16,
     src: Register8,
-) -> u8 {
+) -> u16 {
     hw.write(cpu.regs.combined(reg_addr), cpu.regs[src]);
     8
 }
 
-fn inc_register16(cpu: &mut Cpu, reg: Register16, val: i16) -> u8 {
+fn inc_register16(cpu: &mut Cpu, reg: Register16, val: i16) -> u16 {
     cpu.regs
         .set_combined(reg, ((cpu.regs.combined(reg) as i16) + val) as u16);
     8
 }
 
-fn ld_register8_immediate(cpu: &mut Cpu, hw: &mut Hardware, reg: Register8) -> u8 {
+fn ld_register8_immediate(cpu: &mut Cpu, hw: &mut Hardware, reg: Register8) -> u16 {
     cpu.regs[reg] = cpu.pop_prog_counter(hw);
     8
 }
@@ -290,7 +290,7 @@ enum Direction {
     Right,
 }
 
-fn rotate_circular_a(cpu: &mut Cpu, dir: Direction) -> u8 {
+fn rotate_circular_a(cpu: &mut Cpu, dir: Direction) -> u16 {
     let result = match dir {
         Direction::Left => (cpu.regs.a as u16).rotate_left(1),
         Direction::Right => (cpu.regs.a as u16).rotate_right(1),
@@ -303,7 +303,7 @@ fn rotate_circular_a(cpu: &mut Cpu, dir: Direction) -> u8 {
     4
 }
 
-fn ld_from_stack_pointer_immediate(cpu: &mut Cpu, hw: &mut Hardware) -> u8 {
+fn ld_from_stack_pointer_immediate(cpu: &mut Cpu, hw: &mut Hardware) -> u16 {
     let lsb = cpu.pop_prog_counter(hw);
     let msb = cpu.pop_prog_counter(hw);
     let addr = u16::from_le_bytes([lsb, msb]);
@@ -312,7 +312,7 @@ fn ld_from_stack_pointer_immediate(cpu: &mut Cpu, hw: &mut Hardware) -> u8 {
     20
 }
 
-fn add_register16(cpu: &mut Cpu, reg1: Register16, reg2: Register16) -> u8 {
+fn add_register16(cpu: &mut Cpu, reg1: Register16, reg2: Register16) -> u16 {
     let (result, carry) = cpu
         .regs
         .combined(reg1)
@@ -329,12 +329,12 @@ fn ld_register8_from_addr(
     hw: &mut Hardware,
     dst: Register8,
     reg_addr: Register16,
-) -> u8 {
+) -> u16 {
     cpu.regs[dst] = hw.read(cpu.regs.combined(reg_addr));
     8
 }
 
-fn inc_register8(cpu: &mut Cpu, reg: Register8, val: i8) -> u8 {
+fn inc_register8(cpu: &mut Cpu, reg: Register8, val: i8) -> u16 {
     let (result, carry) = cpu.regs[reg].overflowing_add_signed(val);
     cpu.regs[reg] = result;
     cpu.regs.flags.zero = result == 0;
@@ -343,13 +343,13 @@ fn inc_register8(cpu: &mut Cpu, reg: Register8, val: i8) -> u8 {
     4
 }
 
-fn stop(cpu: &mut Cpu, hw: &mut Hardware) -> u8 {
+fn stop(cpu: &mut Cpu, hw: &mut Hardware) -> u16 {
     cpu.halted = false;
     cpu.pop_prog_counter(hw);
     4
 }
 
-fn rotate_a(cpu: &mut Cpu, dir: Direction) -> u8 {
+fn rotate_a(cpu: &mut Cpu, dir: Direction) -> u16 {
     let (result, carry) = match dir {
         Direction::Left => cpu.regs.a.overflowing_shl(1),
         Direction::Right => cpu.regs.a.overflowing_shr(1),
@@ -362,7 +362,7 @@ fn rotate_a(cpu: &mut Cpu, dir: Direction) -> u8 {
     4
 }
 
-fn jump_relative(cpu: &mut Cpu, hw: &mut Hardware, condition: bool) -> u8 {
+fn jump_relative(cpu: &mut Cpu, hw: &mut Hardware, condition: bool) -> u16 {
     if !condition {
         return 8;
     }
@@ -371,7 +371,7 @@ fn jump_relative(cpu: &mut Cpu, hw: &mut Hardware, condition: bool) -> u8 {
     12
 }
 
-fn ld_addr_from_a_increment(cpu: &mut Cpu, hw: &mut Hardware, inc: i16) -> u8 {
+fn ld_addr_from_a_increment(cpu: &mut Cpu, hw: &mut Hardware, inc: i16) -> u16 {
     ld_addr_from_register8(cpu, hw, Register16::HL, Register8::A);
     cpu.regs.set_combined(
         Register16::HL,
@@ -380,7 +380,7 @@ fn ld_addr_from_a_increment(cpu: &mut Cpu, hw: &mut Hardware, inc: i16) -> u8 {
     8
 }
 
-fn daa(cpu: &mut Cpu) -> u8 {
+fn daa(cpu: &mut Cpu) -> u16 {
     let a = &mut cpu.regs.a;
     if (*a & 0b00001111) > 9 || cpu.regs.flags.carry {
         *a += 0x06;
@@ -396,7 +396,7 @@ fn daa(cpu: &mut Cpu) -> u8 {
     4
 }
 
-fn ld_a_from_addr_increment(cpu: &mut Cpu, hw: &mut Hardware, inc: i16) -> u8 {
+fn ld_a_from_addr_increment(cpu: &mut Cpu, hw: &mut Hardware, inc: i16) -> u16 {
     ld_register8_from_addr(cpu, hw, Register8::A, Register16::HL);
     cpu.regs.set_combined(
         Register16::HL,
@@ -405,14 +405,14 @@ fn ld_a_from_addr_increment(cpu: &mut Cpu, hw: &mut Hardware, inc: i16) -> u8 {
     8
 }
 
-fn cpl(cpu: &mut Cpu) -> u8 {
+fn cpl(cpu: &mut Cpu) -> u16 {
     cpu.regs.a = !cpu.regs.a;
     cpu.regs.flags.neg = true;
     cpu.regs.flags.half_carry = true;
     4
 }
 
-fn inc_addr(cpu: &mut Cpu, hw: &mut Hardware, val: i8) -> u8 {
+fn inc_addr(cpu: &mut Cpu, hw: &mut Hardware, val: i8) -> u16 {
     let byte = hw.read(cpu.regs.combined(Register16::HL));
     let (result, carry) = byte.overflowing_add_signed(val);
     hw.write(cpu.regs.combined(Register16::HL), result);
@@ -422,32 +422,32 @@ fn inc_addr(cpu: &mut Cpu, hw: &mut Hardware, val: i8) -> u8 {
     12
 }
 
-fn ld_addr_from_immediate(cpu: &mut Cpu, hw: &mut Hardware) -> u8 {
+fn ld_addr_from_immediate(cpu: &mut Cpu, hw: &mut Hardware) -> u16 {
     let byte = cpu.pop_prog_counter(hw);
     hw.write(cpu.regs.combined(Register16::HL), byte);
     12
 }
 
-fn scf(cpu: &mut Cpu) -> u8 {
+fn scf(cpu: &mut Cpu) -> u16 {
     cpu.regs.flags.neg = false;
     cpu.regs.flags.half_carry = false;
     cpu.regs.flags.carry = true;
     4
 }
 
-fn ccf(cpu: &mut Cpu) -> u8 {
+fn ccf(cpu: &mut Cpu) -> u16 {
     cpu.regs.flags.neg = false;
     cpu.regs.flags.half_carry = false;
     cpu.regs.flags.carry = !cpu.regs.flags.carry;
     4
 }
 
-fn ld_register8(cpu: &mut Cpu, dst: Register8, src: Register8) -> u8 {
+fn ld_register8(cpu: &mut Cpu, dst: Register8, src: Register8) -> u16 {
     cpu.regs[dst] = cpu.regs[src];
     4
 }
 
-fn halt(cpu: &mut Cpu) -> u8 {
+fn halt(cpu: &mut Cpu) -> u16 {
     cpu.halted = true;
     4
 }
@@ -458,7 +458,7 @@ enum Sign {
     Negative = -1,
 }
 
-fn add_register8(cpu: &mut Cpu, operand: Operand, sign: Sign, use_carry: bool) -> u8 {
+fn add_register8(cpu: &mut Cpu, operand: Operand, sign: Sign, use_carry: bool) -> u16 {
     let carry = if use_carry {
         cpu.regs.flags.carry as i8
     } else {
@@ -474,7 +474,7 @@ fn add_register8(cpu: &mut Cpu, operand: Operand, sign: Sign, use_carry: bool) -
     4 + operand.extra_cycles()
 }
 
-fn and_register8(cpu: &mut Cpu, operand: Operand) -> u8 {
+fn and_register8(cpu: &mut Cpu, operand: Operand) -> u16 {
     cpu.regs[Register8::A] &= operand.value(cpu);
     cpu.regs.flags.zero = cpu.regs[Register8::A] == 0;
     cpu.regs.flags.neg = false;
@@ -483,7 +483,7 @@ fn and_register8(cpu: &mut Cpu, operand: Operand) -> u8 {
     4 + operand.extra_cycles()
 }
 
-fn xor_register8(cpu: &mut Cpu, operand: Operand) -> u8 {
+fn xor_register8(cpu: &mut Cpu, operand: Operand) -> u16 {
     cpu.regs[Register8::A] ^= operand.value(cpu);
     cpu.regs.flags.zero = cpu.regs[Register8::A] == 0;
     cpu.regs.flags.neg = false;
@@ -492,7 +492,7 @@ fn xor_register8(cpu: &mut Cpu, operand: Operand) -> u8 {
     4 + operand.extra_cycles()
 }
 
-fn or_register8(cpu: &mut Cpu, operand: Operand) -> u8 {
+fn or_register8(cpu: &mut Cpu, operand: Operand) -> u16 {
     cpu.regs[Register8::A] |= operand.value(cpu);
     cpu.regs.flags.zero = cpu.regs[Register8::A] == 0;
     cpu.regs.flags.neg = false;
@@ -501,7 +501,7 @@ fn or_register8(cpu: &mut Cpu, operand: Operand) -> u8 {
     4 + operand.extra_cycles()
 }
 
-fn cp_register8(cpu: &mut Cpu, operand: Operand) -> u8 {
+fn cp_register8(cpu: &mut Cpu, operand: Operand) -> u16 {
     let (result, carry) = cpu.regs[Register8::A].overflowing_sub(operand.value(cpu));
     cpu.regs.flags.zero = result == 0;
     cpu.regs.flags.neg = true;
@@ -510,7 +510,7 @@ fn cp_register8(cpu: &mut Cpu, operand: Operand) -> u8 {
     4 + operand.extra_cycles()
 }
 
-fn ret(cpu: &mut Cpu, hw: &mut Hardware, condition: Option<bool>) -> u8 {
+fn ret(cpu: &mut Cpu, hw: &mut Hardware, condition: Option<bool>) -> u16 {
     let (condition, cycles) = match condition {
         Some(cond) => {
             if cond {
@@ -533,7 +533,7 @@ fn ret(cpu: &mut Cpu, hw: &mut Hardware, condition: Option<bool>) -> u8 {
     cycles
 }
 
-fn pop(cpu: &mut Cpu, hw: &mut Hardware, dest: Register16) -> u8 {
+fn pop(cpu: &mut Cpu, hw: &mut Hardware, dest: Register16) -> u16 {
     let lsb = hw.read(cpu.regs.stack_pointer);
     cpu.regs.stack_pointer += 1;
     let msb = hw.read(cpu.regs.stack_pointer);
@@ -542,7 +542,7 @@ fn pop(cpu: &mut Cpu, hw: &mut Hardware, dest: Register16) -> u8 {
     12
 }
 
-fn jump_absolute(cpu: &mut Cpu, hw: &mut Hardware, condition: bool) -> u8 {
+fn jump_absolute(cpu: &mut Cpu, hw: &mut Hardware, condition: bool) -> u16 {
     if !condition {
         return 12;
     }
@@ -552,7 +552,7 @@ fn jump_absolute(cpu: &mut Cpu, hw: &mut Hardware, condition: bool) -> u8 {
     16
 }
 
-fn call(cpu: &mut Cpu, hw: &mut Hardware, condition: bool) -> u8 {
+fn call(cpu: &mut Cpu, hw: &mut Hardware, condition: bool) -> u16 {
     // The subroutine address is read even if the condition is false!
     let lsb = cpu.pop_prog_counter(hw);
     let msb = cpu.pop_prog_counter(hw);
@@ -573,7 +573,7 @@ fn call(cpu: &mut Cpu, hw: &mut Hardware, condition: bool) -> u8 {
     24
 }
 
-fn push(cpu: &mut Cpu, hw: &mut Hardware, src: Register16) -> u8 {
+fn push(cpu: &mut Cpu, hw: &mut Hardware, src: Register16) -> u16 {
     let bytes = cpu.regs.combined(src).to_be_bytes();
     cpu.regs.stack_pointer -= 1;
     hw.write(cpu.regs.stack_pointer, bytes[0]);
@@ -582,7 +582,7 @@ fn push(cpu: &mut Cpu, hw: &mut Hardware, src: Register16) -> u8 {
     16
 }
 
-fn add_immediate(cpu: &mut Cpu, hw: &mut Hardware, sign: Sign, use_carry: bool) -> u8 {
+fn add_immediate(cpu: &mut Cpu, hw: &mut Hardware, sign: Sign, use_carry: bool) -> u16 {
     let carry = if use_carry {
         cpu.regs.flags.carry as i8
     } else {
@@ -599,7 +599,7 @@ fn add_immediate(cpu: &mut Cpu, hw: &mut Hardware, sign: Sign, use_carry: bool) 
     4
 }
 
-fn rst(cpu: &mut Cpu, hw: &mut Hardware, lsb: u8) -> u8 {
+fn rst(cpu: &mut Cpu, hw: &mut Hardware, lsb: u8) -> u16 {
     cpu.regs.stack_pointer -= 1;
     hw.write(
         cpu.regs.stack_pointer,
@@ -614,7 +614,7 @@ fn rst(cpu: &mut Cpu, hw: &mut Hardware, lsb: u8) -> u8 {
     16
 }
 
-fn reti(cpu: &mut Cpu, hw: &mut Hardware) -> u8 {
+fn reti(cpu: &mut Cpu, hw: &mut Hardware) -> u16 {
     cpu.interrupt_enabled = true;
     ret(cpu, hw, None)
 }

@@ -23,7 +23,7 @@ pub struct Timer {
 }
 
 impl Timer {
-    pub fn step(&mut self, ticks: u16) {
+    pub fn tick(&mut self, ticks: u16) {
         self.divider = self.divider.wrapping_add(ticks);
 
         if !self.enabled {
@@ -56,7 +56,7 @@ impl Timer {
             1 => self.counter,
             2 => self.modulo,
             3 => unimplemented!(), // FIXME: Do games read this value at all?
-            _ => panic!("timer maps only 4 bytes"),
+            _ => unreachable!(),
         }
     }
 
@@ -71,14 +71,14 @@ impl Timer {
             3 => {
                 self.enabled = val & 0b00000100 != 0;
                 self.demultiplier = match val & 0b00000011 {
-                    0x00 => 256,
-                    0x01 => 4,
-                    0x10 => 16,
-                    0x11 => 64,
+                    0 => 256,
+                    1 => 4,
+                    2 => 16,
+                    3 => 64,
                     _ => unreachable!(),
                 };
             }
-            _ => panic!("timer maps only 4 bytes"),
+            _ => unreachable!(),
         }
     }
 }

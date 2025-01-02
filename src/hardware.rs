@@ -16,7 +16,7 @@ use crate::hardware::timer::Timer;
 
 /// Master clock for all hardware.
 /// Some components may run at a submultiple of this frequency, though.
-const MASTER_CLOCK: u32 = 4 * 1024 * 1024;
+pub const MASTER_CLOCK: u32 = 4 * 1024 * 1024;
 
 pub struct Hardware {
     work_ram: [u8; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
@@ -24,8 +24,8 @@ pub struct Hardware {
 
     gpu: Gpu,
     cartrdige: Option<Cartridge>,
-    keypad: Keypad,
-    timer: Timer,
+    pub keypad: Keypad,
+    pub timer: Timer,
 }
 
 impl Hardware {
@@ -66,10 +66,6 @@ impl Hardware {
             _ => todo!(),
         }
         todo!()
-    }
-
-    pub fn press_key(&mut self, btn: Button, pressed: bool) {
-        self.keypad.set_pressed(btn, pressed);
     }
 
     pub fn insert_cartridge(&mut self, cart: Cartridge) {
