@@ -4,6 +4,8 @@ use bitflags::BitFlags8;
 
 use square::SquareChannel;
 
+use crate::hardware;
+
 /// Sample rate of all sound.
 const SAMPLE_RATE: u32 = 22050;
 
@@ -23,6 +25,7 @@ const CH1_SWEEP_DIVIDER: u32 = 4;
 
 // https://nightshade256.github.io/2021/03/27/gb-sound-emulation.html
 
+#[derive(Default)]
 pub struct Apu {
     volume: MasterVolume,
     ch1: SquareChannel,
@@ -38,12 +41,21 @@ pub struct Apu {
 }
 
 impl Apu {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
     /// Advances the internal state of the APU and produces one audio sample.
-    ///
-    /// This function must be called at the [SAMPLE_RATE] frequency, not at the [crate::hardware::MASTER_CLOCK] frequency.
-    fn tick(&mut self) {
-        self.ticks = self.ticks.wrapping_add(1);
-        if self.ticks % 8192 == 0 {
+    pub fn tick(&mut self, ticks: u8) {
+        const TICKS_IN_SAMPLE_RATE: u32 = hardware::MASTER_CLOCK / SAMPLE_RATE;
+
+        self.ticks += ticks as u32;
+        if self.ticks < TICKS_IN_SAMPLE_RATE {
+            return;
+        }
+        self.ticks -= TICKS_IN_SAMPLE_RATE;
+
+        if self.ticks > 8192 {
             match self.frame_sequencer {
                 0 => todo!(),
                 1 => todo!(),
@@ -82,6 +94,7 @@ impl Apu {
     }
 }
 
+#[derive(Default)]
 struct MasterVolume(BitFlags8);
 
 impl MasterVolume {

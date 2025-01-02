@@ -23,13 +23,13 @@ pub struct Timer {
 }
 
 impl Timer {
-    pub fn tick(&mut self, ticks: u16) {
-        self.divider = self.divider.wrapping_add(ticks);
+    pub fn tick(&mut self, ticks: u8) {
+        self.divider = self.divider.wrapping_add(ticks as u16);
 
         if !self.enabled {
             return;
         }
-        self.counter_ticks = self.counter_ticks.wrapping_add(ticks);
+        self.counter_ticks = self.counter_ticks.wrapping_add(ticks as u16);
         if self.counter_ticks > self.demultiplier {
             let (val, overflow) = self.counter.overflowing_add(1);
             if overflow {

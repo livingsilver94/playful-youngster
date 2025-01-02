@@ -20,7 +20,7 @@ impl Cpu {
         }
     }
 
-    pub fn tick(&mut self, hw: &mut Hardware) -> u16 {
+    pub fn tick(&mut self, hw: &mut Hardware) -> u8 {
         let opcode = self.pop_prog_counter(hw);
         instructions::execute(self, hw, opcode)
     }

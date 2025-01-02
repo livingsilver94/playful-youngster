@@ -1,5 +1,6 @@
 use crate::hardware::MASTER_CLOCK;
 
+#[derive(Default)]
 pub struct SquareChannel {
     /// The raw period of the sound wave.
     ///
@@ -52,6 +53,7 @@ impl SquareChannel {
     }
 }
 
+#[derive(Default)]
 struct Controls(bitflags::BitFlags8);
 
 impl Controls {

@@ -6,11 +6,11 @@ mod cpu;
 mod graphics;
 mod timer;
 
+use crate::hardware::apu::Apu;
 pub use crate::hardware::cartridge::Cartridge;
 pub use crate::hardware::cpu::Cpu;
 
 use crate::hardware::graphics::Gpu;
-use crate::hardware::keypad::Button;
 use crate::hardware::keypad::Keypad;
 use crate::hardware::timer::Timer;
 
@@ -22,6 +22,7 @@ pub struct Hardware {
     work_ram: [u8; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
     echo_ram: [u8; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
 
+    pub apu: Apu,
     gpu: Gpu,
     cartrdige: Option<Cartridge>,
     pub keypad: Keypad,
@@ -34,6 +35,7 @@ impl Hardware {
             work_ram: [0; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
             echo_ram: [0; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
 
+            apu: Apu::new(),
             gpu: Gpu::new(),
             cartrdige: None,
             keypad: Keypad::new(),

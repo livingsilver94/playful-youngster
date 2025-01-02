@@ -1,0 +1,3 @@
+[submodule "bootrom"]
+	path = bootrom
+	url = https://github.com/ISSOtm/gb-bootroms.git
