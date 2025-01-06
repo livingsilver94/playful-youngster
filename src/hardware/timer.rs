@@ -52,7 +52,7 @@ impl Timer {
 
     pub fn read_register(&self, idx: usize) -> u8 {
         match idx {
-            0 => (self.divider >> 8) as u8,
+            0 => self.divider as u8,
             1 => self.counter,
             2 => self.modulo,
             3 => unimplemented!(), // FIXME: Do games read this value at all?

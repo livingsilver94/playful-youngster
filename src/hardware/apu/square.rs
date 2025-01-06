@@ -1,4 +1,7 @@
-use crate::hardware::MASTER_CLOCK;
+use crate::hardware::{
+    apu::{effect::Volume, TICKS_IN_SAMPLE_RATE},
+    MASTER_CLOCK,
+};
 
 #[derive(Default)]
 pub struct SquareChannel {
@@ -22,24 +25,25 @@ pub struct SquareChannel {
     /// It's the index of a column of [DUTY_CYCLES].
     duty_cycle_position: u8,
 
+    volume: Volume,
+
     /// A counter involved in the wave generation, that decrements at each clock tick.
     /// When it reaches zero, its value is recalculated to a starting value and [Self::duty_cycle_position]
     /// advances.
     frequency_timer: u16,
+
+    /// Remembers the subtick the generator was at, in the previous sample.
+    /// Another way to see it is the current phase of the wave.
+    subtick: u32,
 
     /// Control bits.
     controls: Controls,
 }
 
 impl SquareChannel {
-    const fn tick(&mut self) -> u8 {
-        // Calculate the length (in time) of a single duty cycle step.
-        // The number of master clock ticks required to represent the current frequency is
-        // MASTER_CLOCK / frequency. Since the wave is divided into 8 duty cycle steps, we divide
-        // the result by 8.
-        let duty_cycle_step_length =
-            (MASTER_CLOCK / self.frequency()) as usize / DUTY_CYCLES[0].len();
-        0
+    pub const fn sample(&mut self) -> (u8, u8) {
+        self.follow_wave();
+        (0, 0)
     }
 
     /// Returns the real frequency, in Hz, computed from the raw period.
@@ -48,8 +52,20 @@ impl SquareChannel {
         131072 / (2048 - self.raw_period as u32)
     }
 
-    const fn amplitude(&self) -> u8 {
+    /// Whether the square wave, at a given instant, is high (returns 1) or low (returns 0).
+    const fn wave_amplitude(&self) -> u8 {
         DUTY_CYCLES[self.duty_cycle_pattern as usize][self.duty_cycle_position as usize]
+    }
+
+    const fn follow_wave(&mut self) {
+        const DUTY_CYCLE_RESOLUTION: u32 = DUTY_CYCLES[0].len() as u32;
+        let subtick_ratio = MASTER_CLOCK / (self.frequency() * 8);
+
+        self.subtick = self
+            .subtick
+            .wrapping_add(TICKS_IN_SAMPLE_RATE / subtick_ratio);
+        self.duty_cycle_position =
+            ((self.duty_cycle_position as u32 + self.subtick) % DUTY_CYCLE_RESOLUTION) as u8;
     }
 }
 

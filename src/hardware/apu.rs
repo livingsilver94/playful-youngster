@@ -1,3 +1,4 @@
+mod effect;
 mod square;
 
 use bitflags::BitFlags8;
@@ -7,21 +8,19 @@ use square::SquareChannel;
 use crate::hardware;
 
 /// Sample rate of all sound.
-const SAMPLE_RATE: u32 = 22050;
+const SAMPLE_RATE: u32 = 44100;
 
 /// Size, in bytes, of the sound buffer.
 const BUFFER_SIZE: u32 = 1024;
-
 /// Size, in bytes, of one sound sample.
 const SAMPLE_SIZE: u32 = 1;
+
+const MAX_PERIOD: u16 = 2047;
 
 /// Number of buffers to pass to the sound card, per second, to play the sound.
 // The division by is because sound is stereo: there are 2 channels.
 const BUFFERS_PER_SECOND: u32 = SAMPLE_RATE / ((BUFFER_SIZE / SAMPLE_SIZE) / 2);
-
-const ENVELOPE_DIVIDER: u32 = 8;
-const SOUND_LENGHT_DIVIDER: u32 = 2;
-const CH1_SWEEP_DIVIDER: u32 = 4;
+const TICKS_IN_SAMPLE_RATE: u32 = hardware::MASTER_CLOCK / SAMPLE_RATE;
 
 // https://nightshade256.github.io/2021/03/27/gb-sound-emulation.html
 
@@ -47,13 +46,19 @@ impl Apu {
 
     /// Advances the internal state of the APU and produces one audio sample.
     pub fn tick(&mut self, ticks: u8) {
-        const TICKS_IN_SAMPLE_RATE: u32 = hardware::MASTER_CLOCK / SAMPLE_RATE;
-
+        // TODO: pulse channels are ticked every 4 CPU cycles. Emulate that.
+        if !self.volume.is_audio_on() {
+            return;
+        }
         self.ticks += ticks as u32;
         if self.ticks < TICKS_IN_SAMPLE_RATE {
             return;
         }
         self.ticks -= TICKS_IN_SAMPLE_RATE;
+
+        let (left, right) = [self.ch1.sample(), self.ch2.sample()]
+            .iter()
+            .fold((0, 0), |sum, sample| (sum.0 + sample.0, sum.1 + sample.1));
 
         if self.ticks > 8192 {
             match self.frame_sequencer {
