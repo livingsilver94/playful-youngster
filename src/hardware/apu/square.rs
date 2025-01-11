@@ -1,5 +1,8 @@
 use crate::hardware::{
-    apu::{effect::Volume, TICKS_IN_SAMPLE_RATE},
+    apu::{
+        effect::{Length, Sweep, Volume},
+        TICKS_IN_SAMPLE_RATE,
+    },
     MASTER_CLOCK,
 };
 
@@ -15,9 +18,6 @@ pub struct SquareChannel {
     /// A formula is required to covert this raw _period_ value into a proper human frequency.
     pub raw_period: u16,
 
-    /// A timer that, when it reaches 64, makes the channel to turn off automatically.
-    pub length_timer: u8,
-
     /// Sets the duty cycle pattern. It's the index of a row of [DUTY_CYCLES].
     pub duty_cycle_pattern: u8,
 
@@ -25,7 +25,9 @@ pub struct SquareChannel {
     /// It's the index of a column of [DUTY_CYCLES].
     duty_cycle_position: u8,
 
-    volume: Volume,
+    pub volume: Volume,
+    pub sweep: Sweep,
+    pub length: Length<64>,
 
     /// A counter involved in the wave generation, that decrements at each clock tick.
     /// When it reaches zero, its value is recalculated to a starting value and [Self::duty_cycle_position]
@@ -66,6 +68,10 @@ impl SquareChannel {
             .wrapping_add(TICKS_IN_SAMPLE_RATE / subtick_ratio);
         self.duty_cycle_position =
             ((self.duty_cycle_position as u32 + self.subtick) % DUTY_CYCLE_RESOLUTION) as u8;
+    }
+
+    pub const fn trigger(&mut self) {
+        todo!()
     }
 }
 

@@ -79,21 +79,51 @@ impl Apu {
 
     fn read_register(&self, idx: usize) -> u8 {
         match idx {
-            0x01 => (self.ch1.duty_cycle_pattern << 6) & self.ch1.length_timer,
-            0x06 => (self.ch2.duty_cycle_pattern << 6) & self.ch2.length_timer,
+            0x0 => self.ch1.sweep.as_register(),
+            0x1 => self.ch1.duty_cycle_pattern << 6,
+            0x2 => self.ch1.volume.as_register(),
+            0x3 => (self.ch1.raw_period & 0xFF) as u8,
+            0x4 => {
+                (self.ch1.length.enabled as u8) << 6 | ((self.ch1.raw_period & 0x0700) >> 8) as u8
+            }
+            0x6 => self.ch2.duty_cycle_pattern << 6,
+            0x7 => self.ch2.volume.as_register(),
+            0x8 => (self.ch2.raw_period & 0xFF) as u8,
+            0x9 => {
+                (self.ch2.length.enabled as u8) << 6 | ((self.ch2.raw_period & 0x0700) >> 8) as u8
+            }
             _ => unreachable!(),
         }
     }
 
     fn write_register(&mut self, idx: usize, val: u8) {
         match idx {
-            0x01 => {
+            0x0 => self.ch1.sweep.set_from_register(val),
+            0x1 => {
                 self.ch1.duty_cycle_pattern = (val & 0b11000000) >> 6;
-                self.ch1.length_timer = val & 0b00111111;
+                self.ch1.length.set_timer(val & 0b11111);
             }
-            0x06 => {
+            0x2 => self.ch1.volume.set_from_register(val),
+            0x3 => self.ch1.raw_period = (self.ch1.raw_period & 0xFF00) | val as u16,
+            0x4 => {
+                self.ch1.length.enabled = (val & 0b1000000) != 0;
+                self.ch1.raw_period = self.ch1.raw_period & 0x00FF | ((val & 0b111) as u16) << 8;
+                if val & 0b10000000 != 0 {
+                    self.ch1.trigger();
+                }
+            }
+            0x6 => {
                 self.ch2.duty_cycle_pattern = (val & 0b11000000) >> 6;
-                self.ch2.length_timer = val & 0b00111111;
+                self.ch2.length.set_timer(val & 0b11111);
+            }
+            0x7 => self.ch2.volume.set_from_register(val),
+            0x8 => self.ch2.raw_period = (self.ch2.raw_period & 0xFF00) | val as u16,
+            0x9 => {
+                self.ch2.length.enabled = (val & 0b1000000) != 0;
+                self.ch2.raw_period = self.ch2.raw_period & 0x00FF | ((val & 0b111) as u16) << 8;
+                if val & 0b10000000 != 0 {
+                    self.ch2.trigger();
+                }
             }
             _ => unreachable!(),
         }

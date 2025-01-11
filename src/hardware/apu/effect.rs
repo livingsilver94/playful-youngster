@@ -1,4 +1,4 @@
-use crate::hardware::apu::MAX_PERIOD;
+use crate::hardware::{apu::MAX_PERIOD, MASTER_CLOCK};
 
 /// Determines the volume of a channel.
 pub struct Volume {
@@ -39,6 +39,27 @@ impl Volume {
         self.clock_ticks = (self.clock_ticks + ticks) % ENVELOPE_CLOCK;
 
         self.volume
+    }
+
+    pub fn as_register(&self) -> u8 {
+        let direction = if matches!(self.direction, Direction::Increase) {
+            1
+        } else {
+            0
+        };
+        // INVESTIGATE: self.volume shouldn't change. Does that matter anyway?
+        // https://gbdev.io/pandocs/Audio_Registers.html#ff12--nr12-channel-1-volume--envelope
+        self.volume << 4 | direction << 3 | self.pace
+    }
+
+    pub fn set_from_register(&mut self, register: u8) {
+        self.volume = (register & 0b11110000) >> 4;
+        self.direction = if register & 0b1000 != 0 {
+            Direction::Increase
+        } else {
+            Direction::Decrease
+        };
+        self.pace = register & 0b111;
     }
 }
 
@@ -109,6 +130,25 @@ impl Sweep {
         self.clock_ticks = (self.clock_ticks + ticks) % SWEEP_CLOCK;
 
         result
+    }
+
+    pub fn as_register(&self) -> u8 {
+        let direction = if matches!(self.direction, Direction::Increase) {
+            1
+        } else {
+            0
+        };
+        (self.pace << 4) | (direction << 3) | self.step
+    }
+
+    pub fn set_from_register(&mut self, register: u8) {
+        self.pace = (register & 0b01110000) >> 4;
+        self.direction = if register & 0b1000 == 0 {
+            Direction::Increase
+        } else {
+            Direction::Decrease
+        };
+        self.step = register & 0b111;
     }
 
     fn compute_new_period(&mut self, old_period: u16) -> ChannelSweeped {
