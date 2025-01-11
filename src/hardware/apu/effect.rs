@@ -151,6 +151,34 @@ impl Default for Sweep {
     }
 }
 
+/// A timer that turns off the channel if enabled.
+#[derive(Default)]
+pub struct Length<const MAX_TIMER: u8> {
+    pub enabled: bool,
+    timer: u8,
+
+    clock_ticks: u32,
+}
+
+impl<const MAX_TIMER: u8> Length<MAX_TIMER> {
+    /// Advances the length timer, if enabled. `true` is returned if the channel is still enabled, `false` otherwise.
+    pub fn tick(&mut self, ticks: u32) -> bool {
+        if !self.enabled {
+            return true;
+        }
+
+        let length_ticks = (self.clock_ticks + ticks) / LENGTH_CLOCK;
+        self.timer = self.timer.saturating_sub(length_ticks as u8);
+        self.clock_ticks = (self.clock_ticks + ticks) % LENGTH_CLOCK;
+
+        self.timer != 0
+    }
+
+    pub fn set_timer(&mut self, timer: u8) {
+        self.timer = MAX_TIMER - timer;
+    }
+}
+
 pub enum Direction {
     Decrease,
     Increase,
@@ -166,3 +194,4 @@ pub enum ChannelSweeped {
 
 const ENVELOPE_CLOCK: u32 = 64; // The envelope effect ticks at 64 Hz.
 const SWEEP_CLOCK: u32 = 128; // The sweep effect ticks at 128 Hz.
+const LENGTH_CLOCK: u32 = 256; // The length effect ticks at 256 Hz.
