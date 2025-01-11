@@ -193,14 +193,14 @@ impl Default for Sweep {
 
 /// A timer that turns off the channel if enabled.
 #[derive(Default)]
-pub struct Length<const MAX_TIMER: u8> {
+pub struct Length<const MAX_TIMER: u16> {
     pub enabled: bool,
-    timer: u8,
+    timer: u16,
 
     clock_ticks: u32,
 }
 
-impl<const MAX_TIMER: u8> Length<MAX_TIMER> {
+impl<const MAX_TIMER: u16> Length<MAX_TIMER> {
     /// Advances the length timer, if enabled. `true` is returned if the channel is still enabled, `false` otherwise.
     pub fn tick(&mut self, ticks: u32) -> bool {
         if !self.enabled {
@@ -208,14 +208,14 @@ impl<const MAX_TIMER: u8> Length<MAX_TIMER> {
         }
 
         let length_ticks = (self.clock_ticks + ticks) / LENGTH_CLOCK;
-        self.timer = self.timer.saturating_sub(length_ticks as u8);
+        self.timer = self.timer.saturating_sub(length_ticks as u16);
         self.clock_ticks = (self.clock_ticks + ticks) % LENGTH_CLOCK;
 
         self.timer != 0
     }
 
     pub fn set_timer(&mut self, timer: u8) {
-        self.timer = MAX_TIMER - timer;
+        self.timer = MAX_TIMER - timer as u16;
     }
 }
 
