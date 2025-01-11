@@ -6,7 +6,7 @@ use bitflags::BitFlags8;
 
 use square::SquareChannel;
 
-use crate::hardware;
+use crate::hardware::{self, apu::wave::WaveChannel};
 
 /// Sample rate of all sound.
 const SAMPLE_RATE: u32 = 44100;
@@ -30,6 +30,7 @@ pub struct Apu {
     volume: MasterVolume,
     ch1: SquareChannel,
     ch2: SquareChannel,
+    ch3: WaveChannel,
 
     /// Number of clock ticks that have passed.
     /// Tick count is used to synchronize [Self::frame_sequencer].
@@ -82,16 +83,24 @@ impl Apu {
             0x0 => self.ch1.sweep.as_register(),
             0x1 => self.ch1.duty_cycle_pattern << 6,
             0x2 => self.ch1.volume.as_register(),
-            0x3 => (self.ch1.raw_period & 0xFF) as u8,
+            0x3 => self.ch1.raw_period as u8,
             0x4 => {
                 (self.ch1.length.enabled as u8) << 6 | ((self.ch1.raw_period & 0x0700) >> 8) as u8
             }
             0x6 => self.ch2.duty_cycle_pattern << 6,
             0x7 => self.ch2.volume.as_register(),
-            0x8 => (self.ch2.raw_period & 0xFF) as u8,
+            0x8 => self.ch2.raw_period as u8,
             0x9 => {
                 (self.ch2.length.enabled as u8) << 6 | ((self.ch2.raw_period & 0x0700) >> 8) as u8
             }
+            0xA => (self.ch3.enabled as u8) << 7,
+            0xB => unreachable!(),
+            0xC => u8::from(self.ch3.volume) << 5,
+            0xD => self.ch3.raw_period as u8,
+            0xE => {
+                (self.ch3.length.enabled as u8) << 6 | ((self.ch3.raw_period & 0x0700) >> 8) as u8
+            }
+            0x20..=0x2F => self.ch3.wave_ram[idx - 0x20],
             _ => unreachable!(),
         }
     }
@@ -125,6 +134,18 @@ impl Apu {
                     self.ch2.trigger();
                 }
             }
+            0xA => self.ch3.enabled = val & 0b10000000 != 0,
+            0xB => self.ch3.length.set_timer(val),
+            0xC => self.ch3.volume = ((val & 0b01100000) >> 5).into(),
+            0xD => self.ch3.raw_period = (self.ch3.raw_period & 0xFF00) | val as u16,
+            0xE => {
+                self.ch3.length.enabled = (val & 0b1000000) != 0;
+                self.ch3.raw_period = self.ch3.raw_period & 0x00FF | ((val & 0b111) as u16) << 8;
+                if val & 0b10000000 != 0 {
+                    self.ch3.trigger();
+                }
+            }
+            0x20..=0x2F => self.ch3.wave_ram[idx - 0x20] = val,
             _ => unreachable!(),
         }
     }
