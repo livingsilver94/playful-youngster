@@ -1,5 +1,6 @@
 mod effect;
 mod square;
+mod wave;
 
 use bitflags::BitFlags8;
 
