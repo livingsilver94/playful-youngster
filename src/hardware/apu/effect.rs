@@ -2,8 +2,8 @@ use crate::hardware::{apu::MAX_PERIOD, MASTER_CLOCK};
 
 /// Determines the volume of a channel.
 pub struct Volume {
-    /// Starting volume. If [Self::sweep] is not zero, it will increase or decrease gradually based on [Self::direction]
-    /// and [Self::sweep], otherwise the volume will be constant.
+    /// Starting volume. If [Self::pace] is not zero, it will increase or decrease gradually based on [Self::direction]
+    /// and [Self::pace], otherwise the volume will be constant.
     ///
     /// It is a 4-bit integer, so values above 0xF are not allowed.
     pub volume: u8,
@@ -19,13 +19,16 @@ pub struct Volume {
 }
 
 impl Volume {
-    fn tick(&mut self, ticks: u32) -> u8 {
+    // The envelope effect ticks every 1/64 seconds, that is, every masterClock/64 master clock ticks.
+    const TICKS_TO_ACTIVATE: u32 = MASTER_CLOCK / 64;
+
+    pub fn tick(&mut self, ticks: u32) -> u8 {
         if self.pace == 0 {
             return self.volume;
         }
 
-        let envelope_ticks = (self.clock_ticks + ticks) / ENVELOPE_CLOCK;
-        for _ in 0..envelope_ticks {
+        let activations = (self.clock_ticks + ticks) / Self::TICKS_TO_ACTIVATE;
+        for _ in 0..activations {
             self.pace_ticks += 1;
             if self.pace_ticks == self.pace {
                 self.pace_ticks = 0;
@@ -36,7 +39,7 @@ impl Volume {
                 }
             }
         }
-        self.clock_ticks = (self.clock_ticks + ticks) % ENVELOPE_CLOCK;
+        self.clock_ticks = (self.clock_ticks + ticks) % Self::TICKS_TO_ACTIVATE;
 
         self.volume
     }
@@ -93,6 +96,9 @@ pub struct Sweep {
 }
 
 impl Sweep {
+    // The sweep effect ticks every 1/128 seconds, that is, every masterClock/128 master clock ticks.
+    const TICKS_TO_ACTIVATE: u32 = MASTER_CLOCK / 128;
+
     pub fn new_disabled() -> Self {
         Self {
             pace: 1,
@@ -116,8 +122,8 @@ impl Sweep {
             return result;
         }
 
-        let sweep_ticks = (self.clock_ticks + ticks) / SWEEP_CLOCK;
-        for _ in 0..sweep_ticks {
+        let activations = (self.clock_ticks + ticks) / Self::TICKS_TO_ACTIVATE;
+        for _ in 0..activations {
             self.pace_ticks += 1;
             if self.pace_ticks == self.pace {
                 self.pace_ticks = 0;
@@ -127,7 +133,7 @@ impl Sweep {
                 }
             }
         }
-        self.clock_ticks = (self.clock_ticks + ticks) % SWEEP_CLOCK;
+        self.clock_ticks = (self.clock_ticks + ticks) % Self::TICKS_TO_ACTIVATE;
 
         result
     }
@@ -201,15 +207,18 @@ pub struct Length<const MAX_TIMER: u16> {
 }
 
 impl<const MAX_TIMER: u16> Length<MAX_TIMER> {
+    // The length effect ticks every 1/256 seconds, that is, every masterClock/256 master clock ticks.
+    const TICKS_TO_ACTIVATE: u32 = MASTER_CLOCK / 256;
+
     /// Advances the length timer, if enabled. `true` is returned if the channel is still enabled, `false` otherwise.
     pub fn tick(&mut self, ticks: u32) -> bool {
         if !self.enabled {
             return true;
         }
 
-        let length_ticks = (self.clock_ticks + ticks) / LENGTH_CLOCK;
-        self.timer = self.timer.saturating_sub(length_ticks as u16);
-        self.clock_ticks = (self.clock_ticks + ticks) % LENGTH_CLOCK;
+        let activations = (self.clock_ticks + ticks) / Self::TICKS_TO_ACTIVATE;
+        self.timer = self.timer.saturating_sub(activations as u16);
+        self.clock_ticks = (self.clock_ticks + ticks) % Self::TICKS_TO_ACTIVATE;
 
         self.timer != 0
     }
@@ -231,7 +240,3 @@ pub enum ChannelSweeped {
     /// The channel must be disabled immediately.
     Disabled,
 }
-
-const ENVELOPE_CLOCK: u32 = 64; // The envelope effect ticks at 64 Hz.
-const SWEEP_CLOCK: u32 = 128; // The sweep effect ticks at 128 Hz.
-const LENGTH_CLOCK: u32 = 256; // The length effect ticks at 256 Hz.
