@@ -1,4 +1,5 @@
 mod effect;
+mod noise;
 mod square;
 mod wave;
 
@@ -6,7 +7,10 @@ use bitflags::BitFlags8;
 
 use square::SquareChannel;
 
-use crate::hardware::{self, apu::wave::WaveChannel};
+use crate::hardware::{
+    self,
+    apu::{noise::NoiseChannel, wave::WaveChannel},
+};
 
 /// Sample rate of all sound.
 const SAMPLE_RATE: u32 = 44100;
@@ -31,14 +35,11 @@ pub struct Apu {
     ch1: SquareChannel,
     ch2: SquareChannel,
     ch3: WaveChannel,
+    ch4: NoiseChannel,
 
     /// Number of clock ticks that have passed.
     /// Tick count is used to synchronize [Self::frame_sequencer].
     ticks: u32,
-    /// Clock generator for Sweep, Envelope and Length.
-    /// It counts from 0 to 7, and for each of these values, one or more effect
-    /// generators are activated.
-    frame_sequencer: u8,
 }
 
 impl Apu {
@@ -58,24 +59,14 @@ impl Apu {
         }
         self.ticks -= TICKS_IN_SAMPLE_RATE;
 
-        let (left, right) = [self.ch1.sample(), self.ch2.sample()]
-            .iter()
-            .fold((0, 0), |sum, sample| (sum.0 + sample.0, sum.1 + sample.1));
-
-        if self.ticks > 8192 {
-            match self.frame_sequencer {
-                0 => todo!(),
-                1 => todo!(),
-                2 => todo!(),
-                3 => todo!(),
-                4 => todo!(),
-                5 => todo!(),
-                6 => todo!(),
-                7 => todo!(),
-                _ => unreachable!(),
-            }
-            self.frame_sequencer = (self.frame_sequencer + 1) % 8;
-        }
+        let (left, right) = [
+            self.ch1.sample(),
+            self.ch2.sample(),
+            self.ch3.sample(),
+            self.ch4.sample(),
+        ]
+        .iter()
+        .fold((0, 0), |sum, sample| (sum.0 + sample.0, sum.1 + sample.1));
     }
 
     fn read_register(&self, idx: usize) -> u8 {
@@ -100,6 +91,13 @@ impl Apu {
             0xE => {
                 (self.ch3.length.enabled as u8) << 6 | ((self.ch3.raw_period & 0x0700) >> 8) as u8
             }
+            0x11 => self.ch4.volume.as_register(),
+            0x12 => {
+                self.ch4.clock_shift << 4
+                    | (self.ch4.short_mode as u8) << 3
+                    | self.ch4.clock_divider
+            }
+            0x13 => (self.ch4.length.enabled as u8) << 6,
             0x20..=0x2F => self.ch3.wave_ram[idx - 0x20],
             _ => unreachable!(),
         }
@@ -143,6 +141,19 @@ impl Apu {
                 self.ch3.raw_period = self.ch3.raw_period & 0x00FF | ((val & 0b111) as u16) << 8;
                 if val & 0b10000000 != 0 {
                     self.ch3.trigger();
+                }
+            }
+            0x10 => self.ch4.length.set_timer(val & 0b111111),
+            0x11 => self.ch4.volume.set_from_register(val),
+            0x12 => {
+                self.ch4.clock_shift = (val & 0b11110000) >> 4;
+                self.ch4.short_mode = val & 0b1000 != 0;
+                self.ch4.clock_divider = val & 0b111;
+            }
+            0x13 => {
+                self.ch4.length.enabled = val & 0b1000000 != 0;
+                if val & 0b10000000 != 0 {
+                    self.ch4.trigger();
                 }
             }
             0x20..=0x2F => self.ch3.wave_ram[idx - 0x20] = val,
