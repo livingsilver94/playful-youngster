@@ -1,6 +1,7 @@
 use std::mem::size_of;
 use std::ops::RangeInclusive;
 
+#[derive(Default)]
 pub struct BitFlags8(u8);
 
 impl BitFlags8 {
