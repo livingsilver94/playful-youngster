@@ -56,7 +56,9 @@ impl Hardware {
             MAPPED_TIMER_START..=MAPPED_TIMER_END => self
                 .timer
                 .read_register((addr - MAPPED_TIMER_START) as usize),
-
+            APU_REGISTERS_START..=APU_REGISTERS_END => self
+                .apu
+                .read_register((addr - APU_REGISTERS_START) as usize),
             INTERRUPTS_START..=INTERRUPTS_END => self.read_interrupts(),
             _ => unreachable!(),
         }
@@ -119,6 +121,10 @@ const MAPPED_KEYPAD_END: u16 = 0xFF00;
 
 const MAPPED_TIMER_START: u16 = 0xFF04;
 const MAPPED_TIMER_END: u16 = 0xFF07;
+
+const APU_REGISTERS_START: u16 = 0xFF10;
+const APU_REGISTERS_END: u16 = 0xFF3F;
+
 const MAPPED_DMA: u16 = 0xFF46;
 
 const INTERRUPTS_START: u16 = 0xFFFF;

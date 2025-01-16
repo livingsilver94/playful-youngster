@@ -69,7 +69,7 @@ impl Apu {
         .fold((0, 0), |sum, sample| (sum.0 + sample.0, sum.1 + sample.1));
     }
 
-    fn read_register(&self, idx: usize) -> u8 {
+    pub fn read_register(&self, idx: usize) -> u8 {
         match idx {
             0x0 => self.ch1.sweep.as_register(),
             0x1 => self.ch1.duty_cycle_pattern << 6,
@@ -103,7 +103,7 @@ impl Apu {
         }
     }
 
-    fn write_register(&mut self, idx: usize, val: u8) {
+    pub fn write_register(&mut self, idx: usize, val: u8) {
         match idx {
             0x0 => self.ch1.sweep.set_from_register(val),
             0x1 => {
