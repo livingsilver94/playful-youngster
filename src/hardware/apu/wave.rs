@@ -25,7 +25,9 @@ pub struct WaveChannel {
 }
 
 impl WaveChannel {
-    pub fn tick(&mut self, ticks: u32) {}
+    pub fn sample(&mut self) -> (u8, u8) {
+        todo!()
+    }
 
     /// Returns the real frequency, in Hz, computed from the raw period.
     const fn frequency(&self) -> u32 {
