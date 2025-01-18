@@ -3,6 +3,8 @@ mod noise;
 mod square;
 mod wave;
 
+use std::sync::mpsc;
+
 use bitflags::BitFlags8;
 
 use square::SquareChannel;
@@ -15,21 +17,15 @@ use crate::hardware::{
 /// Sample rate of all sound.
 pub const SAMPLE_RATE: u32 = 44100;
 
-/// Size, in bytes, of the sound buffer.
-const BUFFER_SIZE: u32 = 1024;
 /// Size, in bytes, of one sound sample.
 const SAMPLE_SIZE: u32 = 1;
 
 const MAX_PERIOD: u16 = 2047;
 
-/// Number of buffers to pass to the sound card, per second, to play the sound.
-// The division by is because sound is stereo: there are 2 channels.
-const BUFFERS_PER_SECOND: u32 = SAMPLE_RATE / ((BUFFER_SIZE / SAMPLE_SIZE) / 2);
 const TICKS_IN_SAMPLE_RATE: u32 = hardware::MASTER_CLOCK / SAMPLE_RATE;
 
 // https://nightshade256.github.io/2021/03/27/gb-sound-emulation.html
 
-#[derive(Default)]
 pub struct Apu {
     volume: MasterVolume,
     ch1: SquareChannel,
@@ -40,12 +36,21 @@ pub struct Apu {
     /// Number of clock ticks that have passed.
     /// Tick count is used to synchronize [Self::frame_sequencer].
     ticks: u32,
-    latest_sample: (u8, u8),
+    buffer: mpsc::SyncSender<(u8, u8)>,
 }
 
 impl Apu {
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(buffer: mpsc::SyncSender<(u8, u8)>) -> Self {
+        Self {
+            volume: Default::default(),
+            ch1: Default::default(),
+            ch2: Default::default(),
+            ch3: Default::default(),
+            ch4: Default::default(),
+
+            ticks: Default::default(),
+            buffer,
+        }
     }
 
     /// Advances the internal state of the APU and produces one audio sample.
@@ -60,7 +65,7 @@ impl Apu {
         }
         self.ticks -= TICKS_IN_SAMPLE_RATE;
 
-        self.latest_sample = [
+        let sample = [
             self.ch1.sample(),
             self.ch2.sample(),
             self.ch3.sample(),
@@ -68,10 +73,7 @@ impl Apu {
         ]
         .iter()
         .fold((0, 0), |sum, sample| (sum.0 + sample.0, sum.1 + sample.1));
-    }
-
-    pub fn latest_sample(&self) -> (u8, u8) {
-        self.latest_sample
+        let _ = self.buffer.try_send(sample);
     }
 
     pub fn read_register(&self, idx: usize) -> u8 {

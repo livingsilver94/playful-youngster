@@ -6,6 +6,8 @@ mod cpu;
 mod graphics;
 mod timer;
 
+use std::sync::mpsc;
+
 use crate::hardware::apu::Apu;
 pub use crate::hardware::cartridge::Cartridge;
 pub use crate::hardware::cpu::Cpu;
@@ -30,12 +32,12 @@ pub struct Hardware {
 }
 
 impl Hardware {
-    pub fn new() -> Self {
+    pub fn new(audio_buffer: mpsc::SyncSender<(u8, u8)>) -> Self {
         Self {
             work_ram: [0; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
             echo_ram: [0; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
 
-            apu: Apu::new(),
+            apu: Apu::new(audio_buffer),
             gpu: Gpu::new(),
             cartrdige: None,
             keypad: Keypad::new(),

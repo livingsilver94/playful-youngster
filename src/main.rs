@@ -1,8 +1,8 @@
-use std::{fs::File, io};
+use std::{fs::File, io, sync::mpsc};
 
 use cpal::traits::{DeviceTrait, HostTrait};
 use playful_youngster::{
-    emulator::Emulator,
+    emulator::{Emulator, SAMPLE_RATE},
     hardware::{keypad::Button, Cartridge},
 };
 use winit::{
@@ -14,14 +14,13 @@ use winit::{
     window::{Window, WindowAttributes, WindowId},
 };
 
+const AUDIO_BUFFER_SIZE: usize = 1024;
+
 fn main() -> Result<(), Error> {
     let cartridge = Box::new(File::open("/tmp/cart")?);
 
-    let mut emu = Emulator::new();
-    emu.insert_cartridge(Cartridge::new_from_header(cartridge)?);
-
     let evtloop = EventLoop::new()?;
-    evtloop.run_app(&mut Application::new(emu)?)?;
+    evtloop.run_app(&mut Application::new()?)?;
 
     Ok(())
 }
@@ -30,42 +29,50 @@ struct Application {
     emulator: Emulator,
 
     window: Option<Window>,
-    audio: Option<cpal::Device>,
+    audio: Option<cpal::Stream>,
 }
 
 impl Application {
-    fn new(emu: Emulator) -> Result<Self, Error> {
-        let audio = Self::init_audio_device()?;
-
+    fn new() -> Result<Self, Error> {
+        let (audio_sender, audio_receiver) = mpsc::sync_channel::<(u8, u8)>(AUDIO_BUFFER_SIZE);
+        let audio = Self::init_audio(audio_receiver)?;
         Ok(Self {
-            emulator: emu,
+            emulator: Emulator::new(audio_sender),
+
             window: None,
             audio,
         })
     }
 
-    fn init_audio_device() -> Result<Option<cpal::Device>, Error> {
+    fn init_audio(receiver: mpsc::Receiver<(u8, u8)>) -> Result<Option<cpal::Stream>, Error> {
+        let play = move |data: &mut [u8], _: &cpal::OutputCallbackInfo| {
+            for sample in data {
+                match receiver.try_recv() {
+                    Ok(new_sample) => *sample = new_sample.0,
+                    Err(_) => break,
+                }
+            }
+        };
+
         cpal::default_host()
             .default_output_device()
-            .map_or(Ok(None), |dev| {
+            .map_or(Ok(None), |device| {
                 let config = cpal::StreamConfig {
                     channels: 2,
-                    sample_rate: cpal::SampleRate(playful_youngster::emulator::SAMPLE_RATE),
-                    buffer_size: cpal::BufferSize::Default,
+                    sample_rate: cpal::SampleRate(SAMPLE_RATE),
+                    buffer_size: cpal::BufferSize::Fixed(AUDIO_BUFFER_SIZE as u32),
                 };
-                let stream = dev
+                let stream = device
                     .build_output_stream(
                         &config,
-                        move |data: &mut [u8], _: &cpal::OutputCallbackInfo| {
-                            // react to stream events and read or write stream data here.
-                        },
-                        move |err| {
+                        play,
+                        |err| {
                             eprintln!("{err}");
                         },
                         None,
                     )
                     .unwrap();
-                Ok(Some(dev))
+                Ok(Some(stream))
             })
     }
 }

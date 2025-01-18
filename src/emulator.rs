@@ -1,5 +1,5 @@
 use crate::hardware::{self, keypad::Button, Cartridge, Cpu, Hardware};
-use std::{thread, time};
+use std::{sync::mpsc, thread, time};
 
 /// Target framerate (aka FPS) for the emulator.
 const FRAMERATE: u32 = 60;
@@ -11,10 +11,10 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    pub fn new() -> Self {
+    pub fn new(audio_buffer: mpsc::SyncSender<(u8, u8)>) -> Self {
         Self {
             cpu: Cpu::new(),
-            hw: Hardware::new(),
+            hw: Hardware::new(audio_buffer),
         }
     }
 
