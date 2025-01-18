@@ -20,6 +20,8 @@ use crate::hardware::timer::Timer;
 /// Some components may run at a submultiple of this frequency, though.
 pub const MASTER_CLOCK: u32 = 4 * 1024 * 1024;
 
+const BOOTROM: &[u8; 256] = include_bytes!("../bootrom/bin/dmg.bin");
+
 pub struct Hardware {
     work_ram: [u8; (WORK_RAM_END - WORK_RAM_START + 1) as usize],
     echo_ram: [u8; (ECHO_RAM_END - ECHO_RAM_START + 1) as usize],
@@ -47,6 +49,7 @@ impl Hardware {
 
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
+            BOOTROM_START..=BOOTROM_END => BOOTROM[addr as usize],
             VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.read_vram(addr),
             WORK_RAM_START..=WORK_RAM_END => self.work_ram[(addr - WORK_RAM_START) as usize],
             ECHO_RAM_START..=ECHO_RAM_END => self.echo_ram[(addr - ECHO_RAM_START) as usize],
@@ -68,6 +71,20 @@ impl Hardware {
 
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
+            VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.write_vram(addr, val),
+            WORK_RAM_START..=WORK_RAM_END => self.work_ram[(addr - WORK_RAM_START) as usize] = val,
+            ECHO_RAM_START..=ECHO_RAM_END => self.echo_ram[(addr - ECHO_RAM_START) as usize] = val,
+            OAM_RAM_START..=OAM_RAM_END => self.gpu.write_oam(addr, val),
+
+            MAPPED_KEYPAD_START..=MAPPED_KEYPAD_END => self
+                .keypad
+                .write_register((addr - MAPPED_KEYPAD_START) as usize, val),
+            MAPPED_TIMER_START..=MAPPED_TIMER_END => self
+                .timer
+                .write_register((addr - MAPPED_TIMER_START) as usize, val),
+            APU_REGISTERS_START..=APU_REGISTERS_END => self
+                .apu
+                .write_register((addr - APU_REGISTERS_START) as usize, val),
             MAPPED_DMA => self.dma_write(val),
             _ => todo!(),
         }
@@ -105,6 +122,9 @@ impl Hardware {
 pub trait Interruptible {
     fn has_interrupt(&self) -> bool;
 }
+
+const BOOTROM_START: u16 = 0x00;
+const BOOTROM_END: u16 = 0xFF;
 
 const VIDEO_RAM_START: u16 = 0x8000;
 const VIDEO_RAM_END: u16 = 0x9FFF;
