@@ -1,5 +1,6 @@
 use std::{fs::File, io};
 
+use cpal::traits::{DeviceTrait, HostTrait};
 use playful_youngster::{
     emulator::Emulator,
     hardware::{keypad::Button, Cartridge},
@@ -20,22 +21,52 @@ fn main() -> Result<(), Error> {
     emu.insert_cartridge(Cartridge::new_from_header(cartridge)?);
 
     let evtloop = EventLoop::new()?;
-    evtloop.run_app(&mut Application::new(emu))?;
+    evtloop.run_app(&mut Application::new(emu)?)?;
 
     Ok(())
 }
 
 struct Application {
     emulator: Emulator,
+
     window: Option<Window>,
+    audio: Option<cpal::Device>,
 }
 
 impl Application {
-    fn new(emu: Emulator) -> Self {
-        Self {
+    fn new(emu: Emulator) -> Result<Self, Error> {
+        let audio = Self::init_audio_device()?;
+
+        Ok(Self {
             emulator: emu,
             window: None,
-        }
+            audio,
+        })
+    }
+
+    fn init_audio_device() -> Result<Option<cpal::Device>, Error> {
+        cpal::default_host()
+            .default_output_device()
+            .map_or(Ok(None), |dev| {
+                let config = cpal::StreamConfig {
+                    channels: 2,
+                    sample_rate: cpal::SampleRate(playful_youngster::emulator::SAMPLE_RATE),
+                    buffer_size: cpal::BufferSize::Default,
+                };
+                let stream = dev
+                    .build_output_stream(
+                        &config,
+                        move |data: &mut [u8], _: &cpal::OutputCallbackInfo| {
+                            // react to stream events and read or write stream data here.
+                        },
+                        move |err| {
+                            eprintln!("{err}");
+                        },
+                        None,
+                    )
+                    .unwrap();
+                Ok(Some(dev))
+            })
     }
 }
 
@@ -90,16 +121,25 @@ pub enum Error {
 
     #[error("I/O error")]
     Io(#[from] io::Error),
+
+    #[error("failed to initialize audio system: {0}")]
+    Audio(String),
 }
 
 impl From<OsError> for Error {
-    fn from(value: OsError) -> Self {
+    fn from(value: winit::error::OsError) -> Self {
         Self::Gui(value.to_string())
     }
 }
 
 impl From<EventLoopError> for Error {
-    fn from(value: EventLoopError) -> Self {
+    fn from(value: winit::error::EventLoopError) -> Self {
         Self::Gui(value.to_string())
+    }
+}
+
+impl From<cpal::DefaultStreamConfigError> for Error {
+    fn from(value: cpal::DefaultStreamConfigError) -> Self {
+        Self::Audio(value.to_string())
     }
 }

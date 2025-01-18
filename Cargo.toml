@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 bitflags = { path = "bitflags" }
 bitmaps = "3.2.1"
+cpal = "0.15.3"
 pixels = "0.14.0"
 thiserror = "2.0.8"
 winit = "0.30.7"

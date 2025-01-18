@@ -3,6 +3,7 @@ use std::{thread, time};
 
 /// Target framerate (aka FPS) for the emulator.
 const FRAMERATE: u32 = 60;
+pub use hardware::apu::SAMPLE_RATE;
 
 pub struct Emulator {
     cpu: Cpu,

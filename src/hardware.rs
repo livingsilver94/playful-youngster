@@ -1,6 +1,6 @@
+pub mod apu;
 pub mod keypad;
 
-mod apu;
 mod cartridge;
 mod cpu;
 mod graphics;

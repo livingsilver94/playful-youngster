@@ -13,7 +13,7 @@ use crate::hardware::{
 };
 
 /// Sample rate of all sound.
-const SAMPLE_RATE: u32 = 44100;
+pub const SAMPLE_RATE: u32 = 44100;
 
 /// Size, in bytes, of the sound buffer.
 const BUFFER_SIZE: u32 = 1024;
@@ -40,6 +40,7 @@ pub struct Apu {
     /// Number of clock ticks that have passed.
     /// Tick count is used to synchronize [Self::frame_sequencer].
     ticks: u32,
+    latest_sample: (u8, u8),
 }
 
 impl Apu {
@@ -59,7 +60,7 @@ impl Apu {
         }
         self.ticks -= TICKS_IN_SAMPLE_RATE;
 
-        let (left, right) = [
+        self.latest_sample = [
             self.ch1.sample(),
             self.ch2.sample(),
             self.ch3.sample(),
@@ -67,6 +68,10 @@ impl Apu {
         ]
         .iter()
         .fold((0, 0), |sum, sample| (sum.0 + sample.0, sum.1 + sample.1));
+    }
+
+    pub fn latest_sample(&self) -> (u8, u8) {
+        self.latest_sample
     }
 
     pub fn read_register(&self, idx: usize) -> u8 {
