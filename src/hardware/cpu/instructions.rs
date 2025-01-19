@@ -206,7 +206,10 @@ pub fn execute(cpu: &mut Cpu, hw: &mut Hardware, opcode: u8) -> u8 {
         0xC8 => ret(cpu, hw, Some(cpu.regs.flags.zero)),
         0xC9 => ret(cpu, hw, None),
         0xCA => jump_absolute(cpu, hw, cpu.regs.flags.zero),
-        0xCB => todo!(),
+        0xCB => {
+            let prefix = cpu.pop_prog_counter(hw);
+            cbprefix::execute(cpu, hw, prefix)
+        }
         0xCC => call(cpu, hw, cpu.regs.flags.zero),
         0xCD => call(cpu, hw, true),
         0xCE => add_immediate(cpu, hw, Positive, true),
@@ -242,7 +245,7 @@ enum Operand<'a> {
 }
 
 impl<'a> Operand<'a> {
-    fn value(self, cpu: &mut Cpu) -> u8 {
+    fn value(self, cpu: &Cpu) -> u8 {
         match self {
             Self::Reg(reg) => cpu.regs[reg],
             Self::Addr(reg, hw) => hw.read(cpu.regs.combined(reg)),
@@ -285,7 +288,7 @@ fn ld_register8_immediate(cpu: &mut Cpu, hw: &mut Hardware, reg: Register8) -> u
     8
 }
 
-enum Direction {
+pub enum Direction {
     Left,
     Right,
 }

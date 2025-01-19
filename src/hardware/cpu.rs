@@ -1,3 +1,4 @@
+mod cbprefix;
 mod instructions;
 
 use std::ops;
