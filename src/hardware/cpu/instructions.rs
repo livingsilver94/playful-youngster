@@ -291,15 +291,19 @@ enum Direction {
 }
 
 fn rotate_circular_a(cpu: &mut Cpu, dir: Direction) -> u8 {
-    let result = match dir {
-        Direction::Left => (cpu.regs.a as u16).rotate_left(1),
-        Direction::Right => (cpu.regs.a as u16).rotate_right(1),
+    match dir {
+        Direction::Left => {
+            cpu.regs.flags.carry = cpu.regs.a & 0b10000000 != 0;
+            cpu.regs.a = cpu.regs.a.rotate_left(1)
+        }
+        Direction::Right => {
+            cpu.regs.flags.carry = cpu.regs.a & 0b00000001 != 0;
+            cpu.regs.a = cpu.regs.a.rotate_right(1)
+        }
     };
-    cpu.regs.a = result as u8;
     cpu.regs.flags.zero = false;
     cpu.regs.flags.neg = false;
     cpu.regs.flags.half_carry = false;
-    cpu.regs.flags.carry = result >> 8 != 0;
     4
 }
 
