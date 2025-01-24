@@ -202,7 +202,70 @@ pub fn execute(cpu: &mut Cpu, hw: &mut Hardware, prefix: u8) -> u8 {
         0xBD => reset(cpu, Reg(L), 7),
         0xBE => reset(cpu, Addr(HL, hw), 7),
         0xBF => reset(cpu, Reg(A), 7),
-        _ => unreachable!(),
+        0xC0 => set(cpu, Reg(B), 0),
+        0xC1 => set(cpu, Reg(C), 0),
+        0xC2 => set(cpu, Reg(D), 0),
+        0xC3 => set(cpu, Reg(E), 0),
+        0xC4 => set(cpu, Reg(H), 0),
+        0xC5 => set(cpu, Reg(L), 0),
+        0xC6 => set(cpu, Addr(HL, hw), 0),
+        0xC7 => set(cpu, Reg(A), 0),
+        0xC8 => set(cpu, Reg(B), 1),
+        0xC9 => set(cpu, Reg(C), 1),
+        0xCA => set(cpu, Reg(D), 1),
+        0xCB => set(cpu, Reg(E), 1),
+        0xCC => set(cpu, Reg(H), 1),
+        0xCD => set(cpu, Reg(L), 1),
+        0xCE => set(cpu, Addr(HL, hw), 1),
+        0xCF => set(cpu, Reg(A), 1),
+        0xD0 => set(cpu, Reg(B), 2),
+        0xD1 => set(cpu, Reg(C), 2),
+        0xD2 => set(cpu, Reg(D), 2),
+        0xD3 => set(cpu, Reg(E), 2),
+        0xD4 => set(cpu, Reg(H), 2),
+        0xD5 => set(cpu, Reg(L), 2),
+        0xD6 => set(cpu, Addr(HL, hw), 2),
+        0xD7 => set(cpu, Reg(A), 2),
+        0xD8 => set(cpu, Reg(B), 3),
+        0xD9 => set(cpu, Reg(C), 3),
+        0xDA => set(cpu, Reg(D), 3),
+        0xDB => set(cpu, Reg(E), 3),
+        0xDC => set(cpu, Reg(H), 3),
+        0xDD => set(cpu, Reg(L), 3),
+        0xDE => set(cpu, Addr(HL, hw), 3),
+        0xDF => set(cpu, Reg(A), 3),
+        0xE0 => set(cpu, Reg(B), 4),
+        0xE1 => set(cpu, Reg(C), 4),
+        0xE2 => set(cpu, Reg(D), 4),
+        0xE3 => set(cpu, Reg(E), 4),
+        0xE4 => set(cpu, Reg(H), 4),
+        0xE5 => set(cpu, Reg(L), 4),
+        0xE6 => set(cpu, Addr(HL, hw), 4),
+        0xE7 => set(cpu, Reg(A), 4),
+        0xE8 => set(cpu, Reg(B), 5),
+        0xE9 => set(cpu, Reg(C), 5),
+        0xEA => set(cpu, Reg(D), 5),
+        0xEB => set(cpu, Reg(E), 5),
+        0xEC => set(cpu, Reg(H), 5),
+        0xED => set(cpu, Reg(L), 5),
+        0xEE => set(cpu, Addr(HL, hw), 5),
+        0xEF => set(cpu, Reg(A), 5),
+        0xF0 => set(cpu, Reg(B), 6),
+        0xF1 => set(cpu, Reg(C), 6),
+        0xF2 => set(cpu, Reg(D), 6),
+        0xF3 => set(cpu, Reg(E), 6),
+        0xF4 => set(cpu, Reg(H), 6),
+        0xF5 => set(cpu, Reg(L), 6),
+        0xF6 => set(cpu, Addr(HL, hw), 6),
+        0xF7 => set(cpu, Reg(A), 6),
+        0xF8 => set(cpu, Reg(B), 7),
+        0xF9 => set(cpu, Reg(C), 7),
+        0xFA => set(cpu, Reg(D), 7),
+        0xFB => set(cpu, Reg(E), 7),
+        0xFC => set(cpu, Reg(H), 7),
+        0xFD => set(cpu, Reg(L), 7),
+        0xFE => set(cpu, Addr(HL, hw), 7),
+        0xFF => set(cpu, Reg(A), 7),
     }
 }
 
@@ -319,6 +382,17 @@ fn bit(cpu: &mut Cpu, byte: Byte, index: u8) -> u8 {
 fn reset(cpu: &mut Cpu, mut byte: Byte, index: u8) -> u8 {
     let value = byte.value(cpu);
     byte.set_value(cpu, value & !(1 << index));
+
+    if matches!(byte, Byte::Addr(_, _)) {
+        16
+    } else {
+        8
+    }
+}
+
+fn set(cpu: &mut Cpu, mut byte: Byte, index: u8) -> u8 {
+    let value = byte.value(cpu);
+    byte.set_value(cpu, value | (1 << index));
 
     if matches!(byte, Byte::Addr(_, _)) {
         16
