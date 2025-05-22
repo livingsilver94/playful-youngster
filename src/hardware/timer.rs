@@ -60,8 +60,8 @@ impl Timer {
         }
     }
 
-    pub fn write_register(&mut self, idx: usize, val: u8) {
-        match idx {
+    pub fn write_register(&mut self, addr: u16, val: u8) {
+        match addr {
             0 => {
                 self.divider = 0;
                 self.counter_ticks = 0;

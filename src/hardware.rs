@@ -3,7 +3,7 @@ pub mod keypad;
 
 mod cartridge;
 mod cpu;
-mod graphics;
+mod gpu;
 mod timer;
 
 use std::sync::mpsc;
@@ -12,7 +12,7 @@ use crate::hardware::apu::Apu;
 pub use crate::hardware::cartridge::Cartridge;
 pub use crate::hardware::cpu::Cpu;
 
-use crate::hardware::graphics::Gpu;
+use crate::hardware::gpu::Gpu;
 use crate::hardware::keypad::Keypad;
 use crate::hardware::timer::Timer;
 
@@ -50,7 +50,7 @@ impl Hardware {
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
             BOOTROM_START..=BOOTROM_END => BOOTROM[addr as usize],
-            VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.read_vram(addr),
+            VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.read_vram(addr - VIDEO_RAM_START),
             WORK_RAM_START..=WORK_RAM_END => self.work_ram[(addr - WORK_RAM_START) as usize],
             ECHO_RAM_START..=ECHO_RAM_END => self.echo_ram[(addr - ECHO_RAM_START) as usize],
             OAM_RAM_START..=OAM_RAM_END => self.gpu.read_oam(addr),
@@ -65,6 +65,9 @@ impl Hardware {
                 .apu
                 .read_register((addr - APU_REGISTERS_START) as usize),
             INTERRUPTS_START..=INTERRUPTS_END => self.read_interrupts(),
+            GPU_REGISTERS_START..=GPU_REGISTERS_END => {
+                self.gpu.read_register(addr - APU_REGISTERS_START)
+            }
             _ => unreachable!(),
         }
     }
@@ -76,16 +79,17 @@ impl Hardware {
             ECHO_RAM_START..=ECHO_RAM_END => self.echo_ram[(addr - ECHO_RAM_START) as usize] = val,
             OAM_RAM_START..=OAM_RAM_END => self.gpu.write_oam(addr, val),
 
-            MAPPED_KEYPAD_START..=MAPPED_KEYPAD_END => self
-                .keypad
-                .write_register((addr - MAPPED_KEYPAD_START) as usize, val),
-            MAPPED_TIMER_START..=MAPPED_TIMER_END => self
-                .timer
-                .write_register((addr - MAPPED_TIMER_START) as usize, val),
-            APU_REGISTERS_START..=APU_REGISTERS_END => self
-                .apu
-                .write_register((addr - APU_REGISTERS_START) as usize, val),
-            MAPPED_DMA => self.dma_write(val),
+            MAPPED_KEYPAD_START..=MAPPED_KEYPAD_END => {
+                self.keypad.write_register(addr - MAPPED_KEYPAD_START, val)
+            }
+            MAPPED_TIMER_START..=MAPPED_TIMER_END => {
+                self.timer.write_register(addr - MAPPED_TIMER_START, val)
+            }
+            APU_REGISTERS_START..=APU_REGISTERS_END => {
+                self.apu.write_register(addr - APU_REGISTERS_START, val)
+            }
+            DMA_REGISTER => self.dma_write(val),
+            GPU_REGISTERS_START..=GPU_REGISTERS_END => self.gpu.write_register(addr, val),
             _ => todo!(),
         }
         todo!()
@@ -147,7 +151,9 @@ const MAPPED_TIMER_END: u16 = 0xFF07;
 const APU_REGISTERS_START: u16 = 0xFF10;
 const APU_REGISTERS_END: u16 = 0xFF3F;
 
-const MAPPED_DMA: u16 = 0xFF46;
+const GPU_REGISTERS_START: u16 = 0xFF40;
+const DMA_REGISTER: u16 = 0xFF46;
+const GPU_REGISTERS_END: u16 = 0xFF4B;
 
 const INTERRUPTS_START: u16 = 0xFFFF;
 const INTERRUPTS_END: u16 = 0xFFFF;

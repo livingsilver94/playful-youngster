@@ -52,8 +52,8 @@ impl Keypad {
         0xF
     }
 
-    pub fn write_register(&mut self, idx: usize, val: u8) {
-        if idx > 0 {
+    pub fn write_register(&mut self, addr: u16, val: u8) {
+        if addr > 0 {
             panic!("keypad maps only one byte")
         }
         self.btns.selected = (val & (1 << 5)) == 0;

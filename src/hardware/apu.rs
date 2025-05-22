@@ -110,8 +110,8 @@ impl Apu {
         }
     }
 
-    pub fn write_register(&mut self, idx: usize, val: u8) {
-        match idx {
+    pub fn write_register(&mut self, addr: u16, val: u8) {
+        match addr {
             0x0 => self.ch1.sweep.set_from_register(val),
             0x1 => {
                 self.ch1.duty_cycle_pattern = (val & 0b11000000) >> 6;
@@ -163,7 +163,7 @@ impl Apu {
                     self.ch4.trigger();
                 }
             }
-            0x20..=0x2F => self.ch3.wave_ram[idx - 0x20] = val,
+            0x20..=0x2F => self.ch3.wave_ram[(addr as usize) - 0x20] = val,
             _ => unreachable!(),
         }
     }

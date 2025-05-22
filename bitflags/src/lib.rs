@@ -1,7 +1,7 @@
 use std::mem::size_of;
 use std::ops::RangeInclusive;
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 pub struct BitFlags8(u8);
 
 impl BitFlags8 {
@@ -43,9 +43,9 @@ impl From<u8> for BitFlags8 {
     }
 }
 
-impl Into<u8> for BitFlags8 {
-    fn into(self) -> u8 {
-        self.0
+impl From<BitFlags8> for u8 {
+    fn from(value: BitFlags8) -> Self {
+        value.0
     }
 }
 
