@@ -3,7 +3,7 @@ pub mod keypad;
 
 mod cartridge;
 mod cpu;
-mod graphics;
+mod gpu;
 mod timer;
 
 use std::sync::mpsc;
@@ -12,7 +12,7 @@ use crate::hardware::apu::Apu;
 pub use crate::hardware::cartridge::Cartridge;
 pub use crate::hardware::cpu::Cpu;
 
-use crate::hardware::graphics::Gpu;
+use crate::hardware::gpu::Gpu;
 use crate::hardware::keypad::Keypad;
 use crate::hardware::timer::Timer;
 
@@ -50,7 +50,7 @@ impl Hardware {
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
             BOOTROM_START..=BOOTROM_END => BOOTROM[addr as usize],
-            VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.read_vram(addr),
+            VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.read_vram(addr - VIDEO_RAM_START),
             WORK_RAM_START..=WORK_RAM_END => self.work_ram[(addr - WORK_RAM_START) as usize],
             ECHO_RAM_START..=ECHO_RAM_END => self.echo_ram[(addr - ECHO_RAM_START) as usize],
             OAM_RAM_START..=OAM_RAM_END => self.gpu.read_oam(addr),
