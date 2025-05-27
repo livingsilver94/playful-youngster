@@ -27,17 +27,17 @@ impl Emulator {
     }
 
     pub fn process_frame(&mut self) {
-        const TICKS_IN_FRAMERATE: u32 = hardware::MASTER_CLOCK / FRAMERATE;
+        const TICKS_PER_FRAME: u32 = hardware::MASTER_CLOCK / FRAMERATE;
         const FRAMETIME: f32 = 1.0 / (FRAMERATE as f32);
 
         let mut total_ticks = 0;
-        let duration = time::Instant::now();
-        while total_ticks < TICKS_IN_FRAMERATE {
+        let begin = time::Instant::now();
+        while total_ticks < TICKS_PER_FRAME {
             let ticks = self.cpu.tick(&mut self.hw);
             self.hw.timer.tick(ticks);
             self.hw.apu.tick(ticks);
             total_ticks += ticks as u32;
         }
-        thread::sleep(time::Duration::from_secs_f32(FRAMETIME).saturating_sub(duration.elapsed()));
+        thread::sleep(time::Duration::from_secs_f32(FRAMETIME).saturating_sub(begin.elapsed()));
     }
 }
