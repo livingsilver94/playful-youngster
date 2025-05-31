@@ -5,9 +5,9 @@
 //!
 //! See <https://gbdev.io/pandocs/The_Cartridge_Header.html#the-cartridge-header>
 
-use std::io::{self, Read, Seek};
+use std::io::{self};
 
-use crate::hardware::cartridge::{self, mbc::Mbc};
+use crate::hardware::cartridge::{self, mbc::Mbc, RomSource};
 
 #[derive(Clone, Copy)]
 pub struct CartridgeType(u8);
@@ -28,12 +28,12 @@ impl CartridgeType {
     }
 }
 
-pub fn cartridge_type<R: Read + Seek>(data: &mut R) -> io::Result<CartridgeType> {
-    cartridge::read_at(data, 0x147).map(|code| CartridgeType(code))
+pub fn cartridge_type(data: &mut impl RomSource) -> io::Result<CartridgeType> {
+    cartridge::read_rom(data, 0x147).map(|code| CartridgeType(code))
 }
 
-pub fn rom_banks<R: Read + Seek>(data: &mut R) -> io::Result<u8> {
-    Ok(match cartridge::read_at(data, 0x148)? {
+pub fn rom_banks(data: &mut impl RomSource) -> io::Result<u8> {
+    Ok(match cartridge::read_rom(data, 0x148)? {
         code if (0x00..=0x08).contains(&code) => (1 << code) + 1,
         0x52 => 72,
         0x53 => 80,
@@ -42,8 +42,8 @@ pub fn rom_banks<R: Read + Seek>(data: &mut R) -> io::Result<u8> {
     })
 }
 
-pub fn ram_banks<R: Read + Seek>(data: &mut R, cartridge_type: CartridgeType) -> io::Result<u8> {
-    Ok(match cartridge::read_at(data, 0x149)? {
+pub fn ram_banks(data: &mut impl RomSource, cartridge_type: CartridgeType) -> io::Result<u8> {
+    Ok(match cartridge::read_rom(data, 0x149)? {
         0x00 => {
             // MBC2 has 512 half-bytes or RAM, but it's internal, so ram_banks
             // is technically zero. However, we don't emulate the hardware layout precisely,

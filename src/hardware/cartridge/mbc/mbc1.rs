@@ -2,10 +2,10 @@ use std::io;
 
 use crate::hardware::cartridge::{BankingMode, Hardware};
 
-pub fn read(hw: &mut Hardware, addr: u16) -> io::Result<u8> {
+pub fn read(hw: &Hardware, addr: u16) -> io::Result<u8> {
     match addr {
-        0x0000..=0x3FFF => hw.rom.at(addr),
-        0x4000..=0x7FFF => hw.rom.at_current_bank(addr - 0x4000),
+        0x0000..=0x3FFF => hw.rom.read(addr),
+        0x4000..=0x7FFF => hw.rom.read_current_bank(addr - 0x4000),
         0xA000..=0xBFFF => Ok(hw.ram.read_current_bank(addr - 0xA000)),
         _ => unreachable!(),
     }

@@ -16,7 +16,7 @@ pub enum Mbc {
 }
 
 impl Mbc {
-    pub fn read(&self, mem: &mut Hardware, addr: u16) -> io::Result<u8> {
+    pub fn read(&self, mem: &Hardware, addr: u16) -> io::Result<u8> {
         match self {
             Self::Mbc0 => mbc0::read(mem, addr),
             Self::Mbc1 => mbc1::read(mem, addr),

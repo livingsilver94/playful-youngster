@@ -1,7 +1,10 @@
 mod header;
 mod mbc;
 
-use std::io::{self, Read, Seek, SeekFrom};
+use std::{
+    cell::RefCell,
+    io::{self, Read, Seek, SeekFrom},
+};
 
 use mbc::Mbc;
 
@@ -29,13 +32,21 @@ impl Cartridge {
             mbc: cartridge_type.mbc(),
         })
     }
+
+    pub fn read(&self, addr: u16) -> io::Result<u8> {
+        self.mbc.read(&self.hw, addr)
+    }
+
+    pub fn write(&mut self, addr: u16, val: u8) {
+        self.mbc.write(&mut self.hw, addr, val);
+    }
 }
 
 pub trait RomSource: Read + Seek {}
 impl<T: Read + Seek> RomSource for T {}
 
 struct Rom {
-    data: Box<dyn RomSource>,
+    data: RefCell<Box<dyn RomSource>>,
     /// Number of banks composing the ROM.
     banks: u8,
     /// The currently selected ROM bank.
@@ -50,20 +61,21 @@ impl Rom {
 
     fn new(data: Box<dyn RomSource>, banks: u8) -> Self {
         Self {
-            data,
+            data: RefCell::new(data),
             banks,
             curr_bank: 1,
         }
     }
 
     /// Reads data at an absolute address.
-    fn at(&mut self, addr: u16) -> io::Result<u8> {
-        read_at(&mut self.data, addr)
+    fn read(&self, addr: u16) -> io::Result<u8> {
+        let mut wrap = self.data.borrow_mut();
+        read_rom(&mut wrap.as_mut(), addr)
     }
 
     /// Reads data relative to the currently selected bank.
-    fn at_current_bank(&mut self, addr: u16) -> io::Result<u8> {
-        self.at(self.curr_bank as u16 * Self::BANK_SIZE + addr)
+    fn read_current_bank(&self, addr: u16) -> io::Result<u8> {
+        self.read(self.curr_bank as u16 * Self::BANK_SIZE + addr)
     }
 
     fn set_bank(&mut self, bank: u8) {
@@ -111,7 +123,7 @@ impl Ram {
     }
 
     /// Reads data relative to the currently selected bank.
-    fn read_current_bank(&mut self, addr: u16) -> u8 {
+    fn read_current_bank(&self, addr: u16) -> u8 {
         self.read(self.curr_bank as u16 * Self::BANK_SIZE + addr)
     }
 
@@ -272,7 +284,7 @@ impl RtcBoolRegisters {
     }
 }
 
-fn read_at<R: Read + Seek>(data: &mut R, addr: u16) -> io::Result<u8> {
+fn read_rom(data: &mut impl RomSource, addr: u16) -> io::Result<u8> {
     data.seek(SeekFrom::Start(addr as u64))?;
     let mut buf = [0; 1];
     data.read_exact(&mut buf)?;
