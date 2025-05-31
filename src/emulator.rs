@@ -34,9 +34,7 @@ impl Emulator {
         let begin = time::Instant::now();
         while total_ticks < TICKS_PER_FRAME {
             let ticks = self.cpu.tick(&mut self.hw);
-            self.hw.timer.tick(ticks);
-            self.hw.apu.tick(ticks);
-            total_ticks += ticks as u32;
+            total_ticks += self.hw.tick(ticks as u32);
         }
         thread::sleep(time::Duration::from_secs_f32(FRAMETIME).saturating_sub(begin.elapsed()));
     }

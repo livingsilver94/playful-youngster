@@ -31,6 +31,8 @@ pub struct Hardware {
     cartrdige: Option<Cartridge>,
     pub keypad: Keypad,
     pub timer: Timer,
+
+    dma_performed: bool,
 }
 
 impl Hardware {
@@ -44,6 +46,26 @@ impl Hardware {
             cartrdige: None,
             keypad: Keypad::new(),
             timer: Default::default(),
+
+            dma_performed: Default::default(),
+        }
+    }
+
+    /// Advances the emulation by `ticks` amount of clock ticks.
+    /// This function, in turn, returns a tick count. If no DMA operation
+    /// was performed the returned tick count is equal to `ticks`. Otherwise,
+    /// the return tick count is `ticks` plus the DMA ticks.
+    pub fn tick(&mut self, ticks: u32) -> u32 {
+        /// Number of clock ticks required for DMA operations.
+        const DMA_TICKS: u32 = 640;
+
+        self.apu.tick(ticks as u8);
+        self.timer.tick(ticks as u8);
+        if self.dma_performed {
+            self.dma_performed = false;
+            ticks + DMA_TICKS
+        } else {
+            ticks
         }
     }
 
@@ -74,7 +96,7 @@ impl Hardware {
 
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
-            VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.write_vram(addr, val),
+            VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.write_vram(addr - VIDEO_RAM_START, val),
             WORK_RAM_START..=WORK_RAM_END => self.work_ram[(addr - WORK_RAM_START) as usize] = val,
             ECHO_RAM_START..=ECHO_RAM_END => self.echo_ram[(addr - ECHO_RAM_START) as usize] = val,
             OAM_RAM_START..=OAM_RAM_END => self.gpu.write_oam(addr, val),
@@ -112,7 +134,6 @@ impl Hardware {
         byte
     }
 
-    // TODO: return 160 clock ticks.
     fn dma_write(&mut self, addr: u8) {
         // DMA copies 0xA0 bytes starting from address addr, but multiplied by 256.
         let read_base = (addr as u16) << 8;
@@ -120,6 +141,7 @@ impl Hardware {
         for i in 0..0xA0 {
             self.write(WRITE_BASE + i, self.read(read_base + i))
         }
+        self.dma_performed = true;
     }
 }
 
