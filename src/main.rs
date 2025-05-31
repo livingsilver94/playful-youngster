@@ -1,4 +1,8 @@
-use std::{fs::File, io, sync::mpsc};
+use std::{
+    fs::File,
+    io::{self, BufReader},
+    sync::mpsc,
+};
 
 use cpal::traits::{DeviceTrait, HostTrait};
 use playful_youngster::{
@@ -17,10 +21,14 @@ use winit::{
 const AUDIO_BUFFER_SIZE: usize = 1024;
 
 fn main() -> Result<(), Error> {
-    let cartridge = Box::new(File::open("/tmp/cart")?);
+    let cartridge = Box::new(BufReader::new(File::open("/tmp/cart")?));
+
+    let mut app = Application::new()?;
+    app.emulator
+        .insert_cartridge(Cartridge::new_from_header(cartridge)?);
 
     let evtloop = EventLoop::new()?;
-    evtloop.run_app(&mut Application::new()?)?;
+    evtloop.run_app(&mut app)?;
 
     Ok(())
 }
