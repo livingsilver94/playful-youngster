@@ -29,7 +29,7 @@ impl CartridgeType {
 }
 
 pub fn cartridge_type(data: &mut impl RomSource) -> io::Result<CartridgeType> {
-    cartridge::read_rom(data, 0x147).map(|code| CartridgeType(code))
+    cartridge::read_rom(data, 0x147).map(CartridgeType)
 }
 
 pub fn rom_banks(data: &mut impl RomSource) -> io::Result<u8> {

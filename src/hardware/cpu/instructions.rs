@@ -244,7 +244,7 @@ enum Operand<'a> {
     Addr(Register16, &'a Hardware),
 }
 
-impl<'a> Operand<'a> {
+impl Operand<'_> {
     fn value(self, cpu: &Cpu) -> u8 {
         match self {
             Self::Reg(reg) => cpu.regs[reg],
