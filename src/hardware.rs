@@ -72,6 +72,10 @@ impl Hardware {
     pub fn read(&self, addr: u16) -> u8 {
         match addr {
             BOOTROM_START..=BOOTROM_END => BOOTROM[addr as usize],
+            CARTRIDGE_START..=CARTRIDGE_END => match &self.cartrdige {
+                Some(cart) => cart.read(addr - CARTRIDGE_START).unwrap(),
+                None => 0xFF,
+            },
             VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.read_vram(addr - VIDEO_RAM_START),
             WORK_RAM_START..=WORK_RAM_END => self.work_ram[(addr - WORK_RAM_START) as usize],
             ECHO_RAM_START..=ECHO_RAM_END => self.echo_ram[(addr - ECHO_RAM_START) as usize],
@@ -96,6 +100,11 @@ impl Hardware {
 
     pub fn write(&mut self, addr: u16, val: u8) {
         match addr {
+            CARTRIDGE_START..=CARTRIDGE_END => {
+                if let Some(cart) = &mut self.cartrdige {
+                    cart.write(addr - CARTRIDGE_START, val)
+                }
+            }
             VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.write_vram(addr - VIDEO_RAM_START, val),
             WORK_RAM_START..=WORK_RAM_END => self.work_ram[(addr - WORK_RAM_START) as usize] = val,
             ECHO_RAM_START..=ECHO_RAM_END => self.echo_ram[(addr - ECHO_RAM_START) as usize] = val,
@@ -114,7 +123,6 @@ impl Hardware {
             GPU_REGISTERS_START..=GPU_REGISTERS_END => self.gpu.write_register(addr, val),
             _ => todo!(),
         }
-        todo!()
     }
 
     pub fn insert_cartridge(&mut self, cart: Cartridge) {
@@ -139,7 +147,8 @@ impl Hardware {
         let read_base = (addr as u16) << 8;
         const WRITE_BASE: u16 = 0xFE00;
         for i in 0..0xA0 {
-            self.write(WRITE_BASE + i, self.read(read_base + i))
+            let byte = self.read(read_base + i);
+            self.write(WRITE_BASE + i, byte);
         }
         self.dma_performed = true;
     }
@@ -151,6 +160,9 @@ pub trait Interruptible {
 
 const BOOTROM_START: u16 = 0x00;
 const BOOTROM_END: u16 = 0xFF;
+
+const CARTRIDGE_START: u16 = 0x100;
+const CARTRIDGE_END: u16 = 0x7FFF;
 
 const VIDEO_RAM_START: u16 = 0x8000;
 const VIDEO_RAM_END: u16 = 0x9FFF;
