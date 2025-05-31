@@ -5,6 +5,7 @@ use std::ops;
 
 use crate::hardware::Hardware;
 
+#[derive(Default)]
 pub struct Cpu {
     regs: Registers,
 
