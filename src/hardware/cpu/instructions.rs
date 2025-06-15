@@ -370,10 +370,10 @@ fn rotate_a(cpu: &mut Cpu, dir: Direction) -> u8 {
 }
 
 fn jump_relative(cpu: &mut Cpu, hw: &mut Hardware, condition: bool) -> u8 {
+    let offset = cpu.pop_prog_counter(hw) as i8 as i16;
     if !condition {
         return 8;
     }
-    let offset = cpu.pop_prog_counter(hw) as i16;
     cpu.regs.prog_counter = ((cpu.regs.prog_counter as i16) + offset) as u16;
     12
 }
@@ -382,7 +382,7 @@ fn ld_addr_from_a_increment(cpu: &mut Cpu, hw: &mut Hardware, inc: i16) -> u8 {
     ld_addr_from_register8(cpu, hw, Register16::HL, Register8::A);
     cpu.regs.set_combined(
         Register16::HL,
-        ((cpu.regs.combined(Register16::HL) as i16) + inc) as u16,
+        ((cpu.regs.combined(Register16::HL) as i16).wrapping_add(inc)) as u16,
     );
     8
 }
