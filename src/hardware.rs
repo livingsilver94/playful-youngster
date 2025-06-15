@@ -73,7 +73,9 @@ impl Hardware {
         match addr {
             BOOTROM_START..=BOOTROM_END => BOOTROM[addr as usize],
             CARTRIDGE_START..=CARTRIDGE_END => match &self.cartrdige {
-                Some(cart) => cart.read(addr - CARTRIDGE_START).unwrap(),
+                // Don't subtract the start address here, because
+                // the first 0x100 bytes are ignored. The bootrom overrides them.
+                Some(cart) => cart.read(addr).unwrap(),
                 None => 0xFF,
             },
             VIDEO_RAM_START..=VIDEO_RAM_END => self.gpu.read_vram(addr - VIDEO_RAM_START),
