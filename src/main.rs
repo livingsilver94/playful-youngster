@@ -1,6 +1,8 @@
+use clap::Parser;
+use std::path::PathBuf;
 use std::{
     fs::File,
-    io::{self, BufReader},
+    io::{self},
     sync::mpsc,
 };
 
@@ -20,12 +22,22 @@ use winit::{
 
 const AUDIO_BUFFER_SIZE: usize = 1024;
 
-fn main() -> Result<(), Error> {
-    let cartridge = Box::new(File::open("/tmp/cart")?);
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    /// Path of the game cartridge.
+    cartridge: Option<PathBuf>,
+}
 
+fn main() -> Result<(), Error> {
     let mut app = Application::new()?;
-    app.emulator
-        .insert_cartridge(Cartridge::new_from_header(cartridge)?);
+
+    let cli = Cli::parse();
+    if let Some(path) = cli.cartridge {
+        let cartridge = Box::new(File::open(path)?);
+        app.emulator
+            .insert_cartridge(Cartridge::new_from_header(cartridge)?);
+    }
 
     let evtloop = EventLoop::new()?;
     evtloop.run_app(&mut app)?;
